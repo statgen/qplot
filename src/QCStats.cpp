@@ -467,25 +467,13 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     return;
   }
 
-#if 0
-  CigarCol cigarcol;
-  cigarcol.CigarParse(sam.data.cigar);
-  cigarcol.GetClipLength_begin(sam.data.cigar);
-  cigarcol.GetClipLength_end(sam.data.cigar);
-#endif
-  CigarRoller cigar(sam.getCigar());
-
-  //CigarRoller cigarRoller;
-  //cigarRoller.Set(sam.data.cigar);
-  //int start = sam.data.header->position+cigarcol.nClips_begin;
-  //int refEndOffset = cigarRoller.getRefOffset(sam.data.sequence.Length()-1)-cigarcol.nClips_end;
-  //if(regionIndicator->size()>0 && !regions->IsInRegions(refLabel, start, sam.data.header->position+refEndOffset)) return;
-  //printf("%s %d %d %d\n", refLabel.c_str(), sam.data.header->position+start, start, sam.data.header->position+refEndOffset);
+  // Get the cigar.
+  Cigar* cigar = sam.getCigarInfo();
 
   String aligTypes="";
-  for (int i = 0; i < cigar.size(); i++)
-      for (unsigned int j = 0; j < cigar.getOperator(i).count; j++)
-          aligTypes += cigar.getOperator(i).getChar();
+  for (int i = 0; i < cigar->size(); i++)
+      for (unsigned int j = 0; j < cigar->getOperator(i).count; j++)
+          aligTypes += cigar->getOperator(i).getChar();
 
   int offset = 0; //to adjust position in ref genome due to insertion 'I' and 'S'
   int offset2 = 0;  //to adjust position in a read due to deletion 'D'
