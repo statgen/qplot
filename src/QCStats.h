@@ -38,6 +38,7 @@ class QCStats
   std::map<int, double> misMatchRateByQual;
   std::map<int, uint64_t> *baseCountByQualByCycle;
   std::vector<uint64_t> baseQ20CountByCycle;
+  std::vector<uint64_t> baseReportedQ20CountByCycle;
   std::map<int, uint64_t> qualCount;
   std::map<int, uint64_t> Q20QualScores;
   std::vector<int> qual;
@@ -55,6 +56,7 @@ class QCStats
   uint32_t nBaseCovered;
   uint64_t matchMatrix[6][6];
   uint64_t **baseCountByCycle;
+  double **baseCompositionByCycle;
   double baseComposition[6];
 
   //general stats
@@ -99,6 +101,7 @@ public:
   double CalcMisMatchRateByQual_MSE();
   void CalcQ20Bases();
   void CalcQ20BasesByCycle();
+  void CalcReportedQ20BasesByCycle();
   void CalcBaseComposition();
   void CalcDepthGC(GCContent &gc, std::vector<bool> &);
   void CalcDepthDist();

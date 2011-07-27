@@ -6,7 +6,7 @@
 #include <cmath>
 
 #define MIN_MAPQ 10
-#define SIZE_RESERVED 1000
+#define SIZE_RESERVED 10000
 
 void QCStats::constructorClear()
 {
@@ -53,8 +53,12 @@ QCStats::~QCStats()
   delete [] misMatchRateByCycle;
   delete [] baseCountByQualByCycle;
   for(int i=0; i<size; i++)
+  {
     delete [] baseCountByCycle[i];
+    delete [] baseCompositionByCycle[i];
+  }
   delete [] baseCountByCycle;
+  delete [] baseCompositionByCycle;
 #endif
 }
 
@@ -73,6 +77,7 @@ void QCStats::Init(int n)
   misMatchRateByCycle = new double[size_reserved];
   baseCountByQualByCycle = new std::map<int, uint64_t>[size_reserved];
   baseQ20CountByCycle.resize(size_reserved);
+  baseReportedQ20CountByCycle.resize(size_reserved);
 
   dbSNP = NULL;
 
@@ -96,11 +101,18 @@ void QCStats::Init(int n)
   
   // Base composition along cycles  
   baseCountByCycle = new uint64_t *[size_reserved];
+  baseCompositionByCycle = new double *[size_reserved];
   for(int i=0; i<size_reserved; i++) 
+  {
     baseCountByCycle[i] = new uint64_t[6];
+    baseCompositionByCycle[i] = new double[6];
+  }
   for(int i=0; i<size_reserved; i++)
     for(int j=0; j<6; j++)
+    {
       baseCountByCycle[i][j] = 0;
+      baseCompositionByCycle[i][j] = 0;
+    } 
   
   //For general stats
   nReads=nUnMapped=nUnMapped_Filter=nZeroMapQual=nLT10MapQual=nReadsMapped2TargetRegions=nQ20=nDup=nQCFail=nPaired=nProperPaired=0;
@@ -203,13 +215,14 @@ void QCStats::CalcMisMatchRateByQual()
   for(unsigned int i=0; i<qual.size(); i++)
     {
       qualCount[qual[i]] = matchCountByQual[qual[i]] + misMatchCountByQual[qual[i]];
-      misMatchRateByQual[qual[i]] = double(misMatchCountByQual[qual[i]])/double(qualCount[qual[i]]);
+      if(qualCount[qual[i]]>0) misMatchRateByQual[qual[i]] = double(misMatchCountByQual[qual[i]])/double(qualCount[qual[i]]);
+      else misMatchRateByQual[qual[i]] = 0;
     }
 }
 
 double QCStats::CalcMisMatchRateByQual_MSE()
 {
-  if(qual.size()==0) error("Mismatch rate by quality has not been calculated!\n");
+  if(qual.size()==0) error("No bases are processed!\n");
 
   double mse = 0;
   uint64_t count = 0;
@@ -255,18 +268,51 @@ void QCStats::CalcQ20BasesByCycle()
     }
    }
 }
+
+void QCStats::CalcReportedQ20BasesByCycle()
+{
+  for(int cycle=0; cycle<size; cycle++) {
+   if(baseReportedQ20CountByCycle[cycle]>0) error("Reported Q20 bases have been calculated!\n");
+  }
+
+  for(int cycle=0; cycle<size; cycle++)
+  {
+    std::vector<int> qualInACycle;
+    std::map<int, uint64_t>::iterator p;
+
+    for(p=baseCountByQualByCycle[cycle].begin(); p!=baseCountByQualByCycle[cycle].end(); p++)
+       qualInACycle.push_back(p->first);
+
+    for(unsigned int i=0; i<qualInACycle.size(); i++)
+    {
+     if(qualInACycle[i]>=20)
+       baseReportedQ20CountByCycle[cycle] += baseCountByQualByCycle[cycle][qualInACycle[i]];
+    }
+   }
+}
+
 void QCStats::CalcBaseComposition()
 {
   uint64_t total = 0;
+  uint64_t total_byCycle = 0;
   for(int i=0; i<size; i++)
-    for(int j=0; j<6; j++)
+  {
+     total_byCycle = 0;
+     for(int j=0; j<6; j++)
       {
 	baseComposition[j] += baseCountByCycle[i][j];
 	total+=baseCountByCycle[i][j];
+        total_byCycle += baseCountByCycle[i][j];
       }
-  
+    for(int j=0; j<6; j++)  {
+	if(total_byCycle>0)	baseCompositionByCycle[i][j] = baseCountByCycle[i][j]/total_byCycle;
+	else	baseCompositionByCycle[i][j] = 0;
+    }
+  }
   for(int j=0; j<6; j++)
+   if(total>0)
     baseComposition[j] = 100*double(baseComposition[j])/total;
+   else baseComposition[j] = 0;
 }
 
 void QCStats::CalcDepthGC(GCContent &gc, std::vector<bool> &genomePosCovered)

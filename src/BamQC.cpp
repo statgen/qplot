@@ -442,9 +442,17 @@ void BamQC::Plot(String &plotFile, FILE *pf)
   
   s += GenRscript_InsertSize_Plot();
 
-  // Plot Q20 base count per cycle
+ //base Compositon by Cycle for bases [ACGTNO]
+ // s += "par(mfrow=c(2,2)); par(cex.main=1.4); par(cex.lab=1.2); par(cex.axis=1.2);\n";
+ // s += GenRscript_BaseComp_Plot();
+
+  // Plot empirical Q20 base count per cycle
   s += GenRscript_Q20vsCycle_Plot();
   
+  // Plot reported Q20 base count per cycle
+  // s += GenRscript_ReportedQ20vsCycle_Plot();
+
+
   // Depth distribution
   if(page>1 && !noDepth) s += GenRscript_DepthDist_Plot();
   
@@ -508,7 +516,21 @@ String BamQC::GenRscript_Q20vsCycle_Plot()
  for(int i=0; i<bamFiles.Length(); i++)
    s += GenRscript_Q20vsCycle_Data(i);
   s += "MAX=0;MIN.Y=999999999; MAX.Z=0; \n for(i in 1:NFiles){\nif(length(which(!is.na(Y[[i]])))==0){m=NA; mm=NA;} else {m=max(Y[[i]][which(!is.na(Y[[i]]))]);mm=min(Y[[i]][which(!is.na(Y[[i]]))]);}; m.z=max(Z[[i]]); \n if(!is.na(m) & MAX<m) MAX=m; if(!is.na(mm) & MIN.Y>mm) MIN.Y=mm; if(MAX.Z<m.z) MAX.Z=m.z; \n}\n";
-  s = s + "plot(X[[1]],Y[[1]], xlim=range(1, length(X[[1]])*1.2), ylim=range(0,MAX*1.2), xlab='Cycle', ylab='Q20 base count', type='l',col=colvec[1], main='" + label + " Q20 base count by cycle');\n";
+  s = s + "plot(X[[1]],Y[[1]], xlim=range(1, length(X[[1]])*1.2), ylim=range(0,MAX*1.2), xlab='Cycle', ylab='Empirical Q20 base count', type='l',col=colvec[1], main='" + label + " Empirical Q20 base count by cycle');\n";
+  s += "if(NFiles>1)\n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], type='l');\n";
+  s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
+  s += "grid(10, 10, col=grid.col);\n";
+
+ return(s);      
+}
+
+String BamQC::GenRscript_ReportedQ20vsCycle_Plot()
+{
+ String s;
+ for(int i=0; i<bamFiles.Length(); i++)
+   s += GenRscript_ReportedQ20vsCycle_Data(i);
+  s += "MAX=0;MIN.Y=999999999; MAX.Z=0; \n for(i in 1:NFiles){\nif(length(which(!is.na(Y[[i]])))==0){m=NA; mm=NA;} else {m=max(Y[[i]][which(!is.na(Y[[i]]))]);mm=min(Y[[i]][which(!is.na(Y[[i]]))]);}; m.z=max(Z[[i]]); \n if(!is.na(m) & MAX<m) MAX=m; if(!is.na(mm) & MIN.Y>mm) MIN.Y=mm; if(MAX.Z<m.z) MAX.Z=m.z; \n}\n";
+  s = s + "plot(X[[1]],Y[[1]], xlim=range(1, length(X[[1]])*1.2), ylim=range(0,MAX*1.2), xlab='Cycle', ylab='Reported Q20 base count', type='l',col=colvec[1], main='" + label + " Reported Q20 base count by cycle');\n";
   s += "if(NFiles>1)\n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], type='l');\n";
   s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
   s += "grid(10, 10, col=grid.col);\n";
@@ -666,12 +688,12 @@ String BamQC::GenRscript_BaseComp_Plot()
   for(int i=0; i<bamFiles.Length(); i++)
     s += GenRscript_BaseComp_Data(i);
   
-  s = s+"for(i in 1:"+bamFiles.Length()+") {\n;";
+  s = s+"for(i in 1:"+bamFiles.Length()+") {\n";
   s += " T = sapply(data.frame(data[[i]]), sum);\n";
-  s += " for(j in 1:5){\n;";
+  s += " for(j in 1:5){\n";
   s += "  data[[i]][j,] = data[[i]][j,]/T;\n";
-  s += "   if(i==1)\n Plot(data[[i]][j,], col=colvec[i], type='l');\n";
-  s += "   else\n points(data[[i]][j,], col=colvec[i],type='l');\n";
+  s += "   if(i==1)\n plot(data[[i]][j,], col=colvec[i], type='l') ";
+  s += "   else points(data[[i]][j,], col=colvec[i],type='l');\n";
   s += "  }\n}\n";
 
   return(s);
@@ -754,6 +776,29 @@ String BamQC::GenRscript_Q20vsCycle_Data(int idx)
       x += (i+1);
       String sUInt64; 
       sUInt64.printf("%llu", stats[idx].baseQ20CountByCycle[i]);
+      y += sUInt64;
+      if(i<(size-1)) { x+=","; y+="," ;}
+    }
+  x+=");\n";
+  y+=");\n";
+
+  String s = x+y;
+  s = s+"X[["+Ridx+"]] = x;\n";
+  s = s+"Y[["+Ridx+"]] = y;\n";
+  
+  return(s);
+}
+
+String BamQC::GenRscript_ReportedQ20vsCycle_Data(int idx)
+{
+  int Ridx = idx+1;
+  String x = "x = c(";
+  String y = "y = c(";
+  for(int i=0; i<size; i++)
+    {
+      x += (i+1);
+      String sUInt64; 
+      sUInt64.printf("%llu", stats[idx].baseReportedQ20CountByCycle[i]);
       y += sUInt64;
       if(i<(size-1)) { x+=","; y+="," ;}
     }
