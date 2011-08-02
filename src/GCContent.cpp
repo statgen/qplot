@@ -96,7 +96,6 @@ void GCContent::LoadRegions(String & regionsFile, GenomeSequence &genome)
     if(tokens.Length() < 3) continue;
     
     genomeIndex_t startGenomeIndex = 0;   
-    int chromosome = -1;
     int chromosomeIndex = tokens[1].AsInteger();
     
      startGenomeIndex = genome.getGenomePosition(tokens[0].c_str(), chromosomeIndex);
