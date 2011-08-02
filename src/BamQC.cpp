@@ -212,9 +212,7 @@ void BamQC::LoaddbSNP(String & dbSNPFile)
 void BamQC::LoadRegions(String & regionsFile)
 {
   if(regionsFile.Length()==0) return;
-  
-  regions.LoadRegionList(regionsFile);
-  
+
   IFILE fhRegions;
   fhRegions = ifopen(regionsFile.c_str(),"r");
   if(fhRegions==NULL)

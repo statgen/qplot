@@ -8,7 +8,6 @@
 
 #include "StringArray.h"
 #include "GenomeSequence.h"
-#include "GenomeRegionSeqStats.h"
 #include "QCStats.h"
 
 #define MAXQ 50
@@ -23,7 +22,6 @@ class BamQC
   String lanes;
   std::map<int, int> lanes2Process;
   int size;
-  GenomeRegionSeqStats regions;
   std::vector<bool> dbSNPIndicator;
   std::vector<bool> regionIndicator;
   std::vector<bool> genomePosCovered;

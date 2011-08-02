@@ -12,7 +12,6 @@
 #include <vector>
 #include <map>
 #include "GenomeSequence.h"
-#include "GenomeRegionSeqStats.h"
 #include "GCContent.h"
 #include "QSamFlag.h"
 
@@ -27,7 +26,6 @@ class QCStats
   std::vector<bool> * dbSNP;
   GCContent *GC;
   ReadDepth *depthVec;
-  GenomeRegionSeqStats * regions;
   uint32_t coveredGCFreq[101];
   uint64_t depthTotalVsGC[101];
   double   depthVsGC[101];

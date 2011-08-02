@@ -2,7 +2,7 @@
 EXE=qplot
 ########################
 # The Files:
-TOOLBASE = GCContent  GenomeRegionSeqStats QSamFlag Sequence BamQC QCStats
+TOOLBASE = GCContent  QSamFlag Sequence BamQC QCStats
 SRCONLY=main.cpp
 HDRONLY=FlagDef.h
 
