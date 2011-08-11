@@ -65,14 +65,15 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
         fprintf(stderr, "DONE!\n");
     }
 
-    if(page>1 && !noDepth) depthVec.AllocateMemory(referencegenome.sequenceLength());
+// 
+//    if(page>1 && !noDepth) depthVec.AllocateMemory(referencegenome.sequenceLength());
 
     for(int i=0; i<bamFiles.Length(); i++)
     {
         fprintf(stderr, "Processing bam/sam file %s...\n", bamFiles[i].c_str());
 
-        if(page > 1 && !noDepth)
-            depthVec.SetZeroCount();
+        // if(page > 1 && !noDepth)
+        //     depthVec.SetZeroCount();
 
         // Clear vector of indicator for genome position covered
         genomePosCovered.clear();
@@ -83,7 +84,9 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
         stats[i].SetRegionIndicator(&regionIndicator);
         stats[i].SetGenomePositionCoveredIndicator(&genomePosCovered);
         if(!noGC) stats[i].SetGCContent(&GC);
-        if(page>1 && !noDepth) stats[i].SetDepth(&depthVec);
+        if(page>1 && !noDepth) {
+            stats[i].SetDepth(&depthVec);
+        }
 
         SamFile sam;
         SamRecord samRecord;
@@ -145,7 +148,8 @@ void BamQC::CalcNBaseCount()
 }
 void BamQC::LoadGenomeSequence(String & reference)
 {
-    bool memoryMap = false;
+#pragma message "MemoryMap ON"
+    bool memoryMap = true;
     fprintf(stderr,"Loading reference... ");
 
     referencegenome.setReferenceName(reference.c_str());
@@ -486,7 +490,7 @@ String BamQC::GenRscript_EPSvsPhred_Plot()
     s += "for(i in 1:NFiles) {points(X[[i]][1:length(X[[i]])], Z[[i]][1:length(Z[[i]])]/ratio, col=colvec[i], type='l', lty=2);\n}\n";
     s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
     //s += "grid(10, 10, col=grid.col);\n";
-    s += "abline(v=pretty(seq(MAX.X), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(v=pretty(seq(MAX.X*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
     s += "axis.left.tick = pretty(seq(MAX.Y))\n";
@@ -512,7 +516,7 @@ String BamQC::GenRscript_EPSvsCycle_Plot()
     s += "for(i in 1:NFiles) points(X[[i]], Z[[i]]*ratio/1.2, col=colvec[i], type='l', lty=2);\n";
     s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
     //s += "grid(10, 10, col=grid.col);\n";
-    s += "abline(v=pretty(seq(length(X[[1]])), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(v=pretty(range(1, length(X[[1]])*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
     s += "axis.left.tick = pretty(seq(MAX.Y))\n";
@@ -534,13 +538,8 @@ String BamQC::GenRscript_Q20vsCycle_Plot()
     s += "if(NFiles>1)\n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], type='l');\n";
     s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
     //s += "grid(10, 10, col=grid.col);\n";
-    s += "abline(v=pretty(seq(length(X[[1]])), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
-    s += "axis.left.tick = pretty(seq(MAX.Y))\n";
-    s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
-    s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
-    s += "axis(side = 4, at = axis.right.tick, labels= axis.right.text)\n";
+    s += "abline(v=pretty(range(1, length(X[[1]])*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(h=pretty(range(0,MAX*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "\n";
 
     return(s);
@@ -556,7 +555,7 @@ String BamQC::GenRscript_ReportedQ20vsCycle_Plot()
     s += "if(NFiles>1)\n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], type='l');\n";
     s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
     //s += "grid(10, 10, col=grid.col);\n";
-    s += "abline(v=pretty(seq(length(X[[1]])), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(v=pretty(range(1, length(X[[1]])*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
     s += "axis.left.tick = pretty(seq(MAX.Y))\n";
@@ -583,13 +582,13 @@ String BamQC::GenRscript_DepthVsGC_Plot()
     s +=  "points(X[[1]], z, type='h', col='purple');\n";
     s += "legend(\"topright\", legend=legend.txt, col=colvec, lty=lty.vec);\n";
     //s += "grid(10, 10, col=grid.col);\n";
-    s += "abline(v=pretty(seq(length(X[[1]])), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
-    s += "axis.left.tick = pretty(seq(MAX.Y))\n";
-    s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
-    s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
-    s += "axis(side = 4, at = axis.right.tick, labels= axis.right.text)\n";
+    s += "abline(v=pretty(range(0,120), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(h=pretty(range(0,MAX*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    // s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
+    // s += "axis.left.tick = pretty(seq(MAX*1.2))\n";
+    // s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
+    // s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
+    // s += "axis(side = 4, at = axis.right.tick, labels= axis.right.text)\n";
     s += "\n";
 
     return(s);
@@ -622,13 +621,8 @@ String BamQC::GenRscript_InsertSize_Plot()
     s += "if(NFiles>1) \n for(i in 2:NFiles) points(X[[i]], Y[[i]]/1000000, col=colvec[i], type='l');\n";
     s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
     //s += "grid(10,10, col=grid.col);\n";
-    s += "abline(v=pretty(seq(length(X[[1]])), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    // s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)";
-    s += "axis.left.tick = pretty(seq(MAX.Y))\n";
-    s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
-    s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
-    s += "axis(side = 4, at = axis.right.tick, labels= axis.right.text)\n";
+    s += "abline(v=pretty(range(MIN.X-150, MAX.X+150), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(h=pretty(range(0,MAX.Y/1000000*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "\n";
     return(s);
 }

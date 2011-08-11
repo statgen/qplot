@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
   String lanes;
     
   bool noGC = false;
-  bool noDepth = true;
+  bool noDepth = false;
   int page = 2;
     
   BEGIN_LONG_PARAMETERS(longParameters)

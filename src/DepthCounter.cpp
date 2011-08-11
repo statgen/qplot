@@ -10,72 +10,92 @@
 #include "DepthCounter.h"
 
 void DepthCounter::addBase(const uint64_t& pos) {
-        if (pos >= vector2->getStart() + vector2->getLen()) {
-            fprintf(stderr, "Ignore %lu\n", pos);
-        } else if (pos >= vector2->getStart()) {
-            vector2->addBase(pos);
-        } else if (pos >= vector1->getStart()) {
-            vector1->addBase(pos);
-        } else {
-            static int nWarnings = 0;
-            if (nWarnings++ <= 4) {
-                fprintf(stderr, "The input sam/bam file are not sorted!\n");
-            } else{
-                exit(2);
-            }
+#ifdef _DEBUG_DEPTHCOUNTER_
+    fprintf(stderr, "addBase at %lu\n", pos);
+#endif
+    if (pos >= vector2->getStart() + vector2->getLen()) {
+        fprintf(stderr, "Ignore %lu, v1[start = %lu, len = %lu], v2[start = %lu, len = %lu \n",
+                pos,
+                vector1->getStart(), vector1->getLen(),
+                vector2->getStart(), vector2->getLen());
+        exit(1);
+    } else if (pos >= vector2->getStart()) {
+        vector2->addBase(pos);
+    } else if (pos >= vector1->getStart()) {
+        vector1->addBase(pos);
+    } else {
+        static int nWarnings = 0;
+        if (nWarnings++ <= 4) {
+            fprintf(stderr, "The input sam/bam file are not sorted!\n");
+        } else{
+            exit(2);
         }
-    };
-    /**
-     * if the new read left-most position @param pos is in the second vector (this->vector2),
-     * that means the first vector (this->vector1) is no longer in use.
-     * so we can swap them
-     */
+    }
+};
+/**
+ * if the new read left-most position @param pos is in the second vector (this->vector2),
+ * that means the first vector (this->vector1) is no longer in use.
+ * so we can swap them
+ */
 void DepthCounter::beginNewRead(const uint64_t& pos){
-        if (pos >= this->vector2->getStart() + this->vector2->getLen()){
+#ifdef _DEBUG_DEPTHCOUNTER_
+    fprintf(stderr, "beginNewRead at %lu\n", pos);
+#endif
+    if (pos >= this->vector2->getStart() + this->vector2->getLen()){
+        calculateFrequency(this->vector1);
+        calculateFrequency(this->vector2);
+        this->vector1->setStart(pos);
+        this->vector2->setStart(pos + this->vector1->getLen());
+        this->vector1->clear();
+        this->vector2->clear();
+    } else if (pos >= this->vector2->getStart()){
+        swapVector();
+    } else {
+        //assert(pos >= this->vector1->getStart());
+        if (pos >= this->vector1->getStart()) {
+        } else {
+            fprintf(stderr, "Rewind distVec.\n");
             calculateFrequency(this->vector1);
             calculateFrequency(this->vector2);
             this->vector1->setStart(pos);
             this->vector2->setStart(pos + this->vector1->getLen());
             this->vector1->clear();
             this->vector2->clear();
-        } else if (pos >= this->vector2->getStart()){
-            swapVector();
-        } else {
-            assert(pos >= this->vector1->getStart());
-        };
-    };
-    /**
-     * @return frequency table
-     * by default: freq from 0 - 254 is counted
-     * this should be called at last
-     */
-void DepthCounter::swapVector() {
-        // store the data in vector1
-        calculateFrequency(this->vector1);
-        // swap both vectors
-        this->vector1->setStart(this->vector2->getStart() + this->vector2->getLen());
-        this->vector1->clear();
-        DepthVector* tmp = this->vector2;
-        this->vector2 = this->vector1;
-        this->vector1 = tmp;
-
-
-    };
-void DepthCounter::calculateFrequency(DepthVector* v) {
-        for (uint64_t i = 0; i < v->getLen(); i++) {
-            uint32_t tmp = v->at(i);
-            if (tmp >= MAX_DEPTH)
-                freqTable[MAX_DEPTH - 1] ++;
-            else
-                freqTable[(int)(tmp)] ++ ;
         }
+    };
+};
+/**
+ * @return frequency table
+ * by default: freq from 0 - 254 is counted
+ * this should be called at last
+ */
+void DepthCounter::swapVector() {
+    // store the data in vector1
+    calculateFrequency(this->vector1);
+    // swap both vectors
+    this->vector1->setStart(this->vector2->getStart() + this->vector2->getLen());
+    this->vector1->clear();
+    DepthVector* tmp = this->vector2;
+    this->vector2 = this->vector1;
+    this->vector1 = tmp;
+
+
+};
+void DepthCounter::calculateFrequency(DepthVector* v) {
+    for (uint64_t i = 0; i < v->getLen(); i++) {
+        uint32_t tmp = v->at(i);
+        if (tmp >= MAX_DEPTH)
+            freqTable[MAX_DEPTH - 1] ++;
+        else
+            freqTable[(int)(tmp)] ++ ;
     }
+}
 
 void printFrequency(std::vector<uint32_t>& f){
     for (unsigned int i = 0; i < MAX_DEPTH; i++){
         if (f[i] > 0) {
             fprintf(stdout, "%u: %u\n", i, f[i]);
-        } 
+        }
     };
 };
 
@@ -103,7 +123,7 @@ public:
      */
     int next() const {
         double L = exp(-lambda);
-        int k = 0; 
+        int k = 0;
         double p = 1.0;
         do {
             k += 1;

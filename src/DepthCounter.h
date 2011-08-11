@@ -50,7 +50,13 @@ private:
 
 class DepthCounter{
 public:
+    DepthCounter(){
+        Init(65536);
+    }
     DepthCounter(uint64_t len) {
+        Init(len);
+    }
+    void Init(uint64_t len) {
         vector1 = NULL;
         vector2 = NULL;
         vector1 = new DepthVector(len);
