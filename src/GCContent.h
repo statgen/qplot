@@ -10,8 +10,8 @@
 #include "IntArray.h"
 #include "StringHash.h"
 
-
 #include "GenomeSequence.h"
+#include "MmapFile.h"
 
 class GCContent
 {
@@ -27,6 +27,7 @@ class GCContent
   GenomeSequence *genome;
   StringIntHash GCFreq;
   std::vector<bool> regionIndicator;
+  MmapFile mf;
   //std::map<int, uint64_t> depthDist;
  public:
   GCContent();
