@@ -27,7 +27,7 @@ class BamQC
   std::vector<bool> genomePosCovered;
   GenomeSequence referencegenome;
   uint32_t refBaseNCount;
-  ReadDepth depthVec;
+  DepthCounter depthVec;
   GCContent GC;
   QCStats *stats;
   int nRecords2Process;

@@ -14,6 +14,7 @@
 #include "GenomeSequence.h"
 #include "GCContent.h"
 #include "QSamFlag.h"
+#include "DepthCounter.h"
 
 using namespace std;
 
@@ -25,7 +26,8 @@ class QCStats
   std::vector<bool> * regionIndicator;
   std::vector<bool> * dbSNP;
   GCContent *GC;
-  ReadDepth *depthVec;
+  // ReadDepth *depthVec;
+  DepthCounter* depthVec;
   uint32_t coveredGCFreq[101];
   uint64_t depthTotalVsGC[101];
   double   depthVsGC[101];
@@ -90,7 +92,7 @@ public:
   void SetdbSNPIndicator(vector<bool> *db){ dbSNP = db; };
   void SetGenomePositionCoveredIndicator(vector<bool> *gpc){ genomePosCovered = gpc;};
   void SetGCContent(GCContent *gc) { GC = gc; }
-  void SetDepth(ReadDepth *depth){depthVec = depth;}
+  void SetDepth(DepthCounter *depth) {depthVec = depth;}
   void SetRegionIndicator(std::vector<bool> *region){regionIndicator = region;};
   void CalcGenomeCoverage(std::vector<bool> &, uint32_t);
   void CalcMisMatchRateByCycle();
