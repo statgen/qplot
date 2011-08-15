@@ -462,12 +462,8 @@ void BamQC::Plot(String &plotFile, FILE *pf)
     // Genearal stats about mapping
     if(page>1) s += GenRscript_GeneralStats_Plot();
 
+    // Coverage and Q20 base count plot
     if(page>1) s += GenRscript_DepthCoverage_Q20_Plot();
-    // // Coverage
-    // if(page>1) s += GenRscript_DepthCoverage_Plot();
-
-    // // Q20 base count
-    // if(page>1) s += GenRscript_Q20_Plot();
 
     fprintf(pf, "%s\n", s.c_str());
 
@@ -604,17 +600,34 @@ String BamQC::GenRscript_DepthDist_Plot()
         s += GenRscript_DepthDist_Data(i);
     }
 
-    s += "for(i in 1:NFiles){\n";
-    s += "Y[[i]]=(sum(Y[[i]]) - cumsum(Y[[i]]))/sum(Y[[i]]); \n";
+    // total site
+    char temp[100];
+    uint64_t sites = 0;
+    if (regionIndicator.size()==0) {
+        sites = referencegenome.sequenceLength();
+    } else{
+        for (unsigned int i = 0; i < regionIndicator.size() ; i++) {
+            if (regionIndicator[i]) sites++;
+        }
+    }
+    sprintf(temp, "%lu", sites);
+    s += "total.site = ";
+    s += temp;
+    s += "\n";
+
+    // make depth.legend.txt
+    s += "depth.legend.txt = legend.txt\n";
+    s += "for(i in 1:NFiles){";
+    s += "depth.legend.txt[i] = paste(legend.txt[i], '  (No coverage = ',round((1-sum(Y[[i]])/total.site)*100,2), '% )'); ";
+    s += "Y[[i]]=(sum(Y[[i]]) - cumsum(Y[[i]]))/total.site * 100; ";
     s += "}\n";
 
-    
     s += "MAX.X=0; MAX.Y=0; \n for(i in 1:NFiles){\n tmp = length(which(Y[[i]] > max(Y[[i]])*.05)) * 2; \n if (MAX.X < tmp) MAX.X = tmp; \n if (MAX.Y < max(Y[[i]])) MAX.Y = max(Y[[i]]); }\n";
-    s = s + "plot(X[[1]],Y[[1]], xlim=range(1, MAX.X), ylim=range(0,MAX.Y*1.2), xlab='Depth', ylab='Fraction of covered sites', type='l', col=colvec[1], main='" + label + " Depth distribution');\n";
-    s += "if(NFiles>1) \n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], type='l');\n";
-    s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
+    s = s + "plot(X[[1]],Y[[1]], xlim=range(1, min(MAX.X,10)), ylim=range(0,MAX.Y*1.2), xlab='Depth', ylab='Percentage of covered sites', pch = '+', type='b', col=colvec[1], main='" + label + " Depth distribution');\n";
+    s += "if(NFiles>1) \n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], pch = '+', type='b');\n";
+    s += "legend(\"topright\",legend=depth.legend.txt, col=colvec, lty=lty.vec);\n";
     // s += "grid(10,10, col=grid.col);\n";
-    s += "abline(v=pretty(range(0,MAX.X), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(v=pretty(range(0,min(MAX.X, 10)), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(range(0,MAX.Y*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "\n";
     return(s);
@@ -666,7 +679,7 @@ String BamQC::GenRscript_DepthCoverage_Q20_Plot()
         }
     }
     s+=");\n";
-
+    
     s += "ylim = range(-max(x2), max(x1)) * 1.2;\n";
     s += "y1lim = range(0, max(x1)) * 1.2;\n";
     s += "y2lim = range(-max(x2), 0) * 1.2;\n";
