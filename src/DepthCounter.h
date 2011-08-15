@@ -83,7 +83,14 @@ public:
      * by default: freq from 0 - 254 is counted
      * this should be called at last
      */
-    std::vector<uint32_t> & getFreqDist(){
+    void clear() {
+        this->vector1->setStart(0);
+        this->vector1->clear();
+        this->vector2->setStart(this->vector1->getLen());
+        this->vector1->clear();
+        std::fill(this->freqTable.begin(), this->freqTable.end(), 0);
+    };
+    const std::vector<uint32_t> & getFreqDist(){
         calculateFrequency(this->vector1);
         calculateFrequency(this->vector2);
         return this->freqTable;

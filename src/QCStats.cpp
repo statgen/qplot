@@ -331,11 +331,13 @@ void QCStats::CalcDepthGC(GCContent &gc, std::vector<bool> &genomePosCovered)
 
 void QCStats::CalcDepthDist()
 {
-    std::vector<uint32_t> freq = depthVec->getFreqDist();
+    const std::vector<uint32_t>& freq = depthVec->getFreqDist();
     for (unsigned int i = 1; i < freq.size(); i++){
         depthDist[i] = freq[i];
-        fprintf(stderr, "depth %u count = %u\n", i, freq[i]);
+        // fprintf(stderr, "depth %u count = %u\n", i, freq[i]);
     }
+    // old code:
+    //
     // depthDist.clear();
     // for(uint32_t i=0; i<(*depthVec).length; i++)
     //   if((*depthVec).depth[i]>0)

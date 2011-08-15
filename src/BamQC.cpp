@@ -86,6 +86,7 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
         if(!noGC) stats[i].SetGCContent(&GC);
         if(page>1 && !noDepth) {
             stats[i].SetDepth(&depthVec);
+            this->depthVec.clear();
         }
 
         SamFile sam;
@@ -492,7 +493,7 @@ String BamQC::GenRscript_EPSvsPhred_Plot()
     //s += "grid(10, 10, col=grid.col);\n";
     s += "abline(v=pretty(seq(MAX.X*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
+    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=par()$cex*1.2)\n";
     s += "axis.left.tick = pretty(seq(MAX.Y))\n";
     s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
     s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
@@ -518,7 +519,7 @@ String BamQC::GenRscript_EPSvsCycle_Plot()
     //s += "grid(10, 10, col=grid.col);\n";
     s += "abline(v=pretty(range(1, length(X[[1]])*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
+    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=par()$cex*1.2)\n";
     s += "axis.left.tick = pretty(seq(MAX.Y))\n";
     s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
     s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
@@ -557,7 +558,7 @@ String BamQC::GenRscript_ReportedQ20vsCycle_Plot()
     //s += "grid(10, 10, col=grid.col);\n";
     s += "abline(v=pretty(range(1, length(X[[1]])*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
+    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=par()$cex*1.2)\n";
     s += "axis.left.tick = pretty(seq(MAX.Y))\n";
     s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
     s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
@@ -584,7 +585,7 @@ String BamQC::GenRscript_DepthVsGC_Plot()
     //s += "grid(10, 10, col=grid.col);\n";
     s += "abline(v=pretty(range(0,120), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(range(0,MAX*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    // s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
+    // s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=par()$cex*1.2)\n";
     // s += "axis.left.tick = pretty(seq(MAX*1.2))\n";
     // s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
     // s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
@@ -601,12 +602,22 @@ String BamQC::GenRscript_DepthDist_Plot()
     {
         s += GenRscript_DepthDist_Data(i);
     }
-    s += "MAX.X=0; MAX.Y=0; \n for(i in 1:NFiles){\n x=X[[i]];\n y=Y[[i]]; \n m.y=max(y[which((!is.na(y)) & x<255)]);\n if(MAX.Y<m.y) MAX.Y=m.y;\n m.x=which(y==m.y);\n if(MAX.X<m.x) MAX.X=m.x;\n }\n";
-    s = s + "plot(X[[1]],Y[[1]]/1000000, xlim=range(1, max(254,MAX.X*3)), ylim=range(0,MAX.Y*1.2/1000000), xlab='Depth', ylab='Base count in million', type='l', col=colvec[1], main='" + label + " Depth distribution');\n";
-    s += "if(NFiles>1) \n for(i in 2:NFiles) points(X[[i]], Y[[i]]/1000000, col=colvec[i], type='l');\n";
-    s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
-    s += "grid(10,10, col=grid.col);\n";
+    s += "breaks = seq(60)\n";
+    s += "for(i in 1:NFiles){\n";
+    s += "y=(sum(Y[[i]]) - cumsum(Y[[i]]))/sum(Y[[i]]); \n";
+    s += "Y[[i]] = y[breaks]\n";
+    s += "X[[i]] = x[breaks]\n";
+    s += "}\n";
 
+    
+    s += "MAX.X=0; MAX.Y=0; \n for(i in 1:NFiles){\n x=X[[i]];\n y=Y[[i]]; \n m.y=max(y[which((!is.na(y)) & x<255)]);\n if(MAX.Y<m.y) MAX.Y=m.y;\n m.x=which(y==m.y);\n if(MAX.X<m.x) MAX.X=m.x;\n }\n";
+    s = s + "plot(X[[1]],Y[[1]], xlim=range(1, 60), ylim=range(0,MAX.Y*1.2), xlab='Depth', ylab='Fraction of covered sites', type='l', col=colvec[1], main='" + label + " Depth distribution');\n";
+    s += "if(NFiles>1) \n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], type='l');\n";
+    s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
+    // s += "grid(10,10, col=grid.col);\n";
+    s += "abline(v=pretty(range(0,60), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(h=pretty(range(0,MAX.Y*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "\n";
     return(s);
 }
 
@@ -720,11 +731,6 @@ String BamQC::GenRscript_GeneralStats_Plot()
     s += "legend(\"topleft\", legend=legend.txt, col=c(1,2,3,4,5,6), lty=1, pch=pchvec, merge=TRUE, horiz=F,cex=0.9);\n";
     s += "abline(v=seq(x), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(seq(0, max(x)*1.4), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=1.2)\n";
-    s += "axis.left.tick = pretty(seq(MAX.Y))\n";
-    s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
-    s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
-    s += "axis(side = 4, at = axis.right.tick, labels= axis.right.text)\n";
     s += "\n";
     
     return(s);
