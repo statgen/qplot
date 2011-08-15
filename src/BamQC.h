@@ -63,8 +63,7 @@ class BamQC
   String GenRscript_DepthDist_Plot();
   String GenRscript_BaseComp_Plot();
   String GenRscript_InsertSize_Plot();
-  String GenRscript_DepthCoverage_Plot();
-  String GenRscript_Q20_Plot();
+  String GenRscript_DepthCoverage_Q20_Plot();
   String GenRscript_GeneralStats_Plot();
 
   String GenRscript_EPSvsPhred_Data(int idx);

@@ -462,11 +462,12 @@ void BamQC::Plot(String &plotFile, FILE *pf)
     // Genearal stats about mapping
     if(page>1) s += GenRscript_GeneralStats_Plot();
 
-    // Coverage
-    if(page>1) s += GenRscript_DepthCoverage_Plot();
+    if(page>1) s += GenRscript_DepthCoverage_Q20_Plot();
+    // // Coverage
+    // if(page>1) s += GenRscript_DepthCoverage_Plot();
 
-    // Q20 base count
-    if(page>1) s += GenRscript_Q20_Plot();
+    // // Q20 base count
+    // if(page>1) s += GenRscript_Q20_Plot();
 
     fprintf(pf, "%s\n", s.c_str());
 
@@ -602,20 +603,18 @@ String BamQC::GenRscript_DepthDist_Plot()
     {
         s += GenRscript_DepthDist_Data(i);
     }
-    s += "breaks = seq(60)\n";
+
     s += "for(i in 1:NFiles){\n";
-    s += "y=(sum(Y[[i]]) - cumsum(Y[[i]]))/sum(Y[[i]]); \n";
-    s += "Y[[i]] = y[breaks]\n";
-    s += "X[[i]] = x[breaks]\n";
+    s += "Y[[i]]=(sum(Y[[i]]) - cumsum(Y[[i]]))/sum(Y[[i]]); \n";
     s += "}\n";
 
     
-    s += "MAX.X=0; MAX.Y=0; \n for(i in 1:NFiles){\n x=X[[i]];\n y=Y[[i]]; \n m.y=max(y[which((!is.na(y)) & x<255)]);\n if(MAX.Y<m.y) MAX.Y=m.y;\n m.x=which(y==m.y);\n if(MAX.X<m.x) MAX.X=m.x;\n }\n";
-    s = s + "plot(X[[1]],Y[[1]], xlim=range(1, 60), ylim=range(0,MAX.Y*1.2), xlab='Depth', ylab='Fraction of covered sites', type='l', col=colvec[1], main='" + label + " Depth distribution');\n";
+    s += "MAX.X=0; MAX.Y=0; \n for(i in 1:NFiles){\n tmp = length(which(Y[[i]] > max(Y[[i]])*.05)) * 2; \n if (MAX.X < tmp) MAX.X = tmp; \n if (MAX.Y < max(Y[[i]])) MAX.Y = max(Y[[i]]); }\n";
+    s = s + "plot(X[[1]],Y[[1]], xlim=range(1, MAX.X), ylim=range(0,MAX.Y*1.2), xlab='Depth', ylab='Fraction of covered sites', type='l', col=colvec[1], main='" + label + " Depth distribution');\n";
     s += "if(NFiles>1) \n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], type='l');\n";
     s += "legend(\"topright\",legend=legend.txt, col=colvec, lty=lty.vec);\n";
     // s += "grid(10,10, col=grid.col);\n";
-    s += "abline(v=pretty(range(0,60), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(v=pretty(range(0,MAX.X), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(range(0,MAX.Y*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "\n";
     return(s);
@@ -638,16 +637,16 @@ String BamQC::GenRscript_InsertSize_Plot()
     return(s);
 }
 
-String BamQC::GenRscript_DepthCoverage_Plot()
+String BamQC::GenRscript_DepthCoverage_Q20_Plot()
 {
     StringArray bamLabelArray;
     bamLabelArray.ReplaceTokens(bamLabel, ",");
     String s, names_arg;
-    s+="x=c(";
+    s+="x1=c(";
     names_arg +="c(";
     for(int i=0; i<bamFiles.Length(); i++)
     {
-        s+=stats[i].coverage;
+        s += stats[i].coverage;
         if(bamLabel.Length()>0) names_arg = names_arg + "'" +  bamLabelArray[i] + "'";
         else names_arg+=(i+1);
         if(i<(bamFiles.Length()-1)){
@@ -657,34 +656,37 @@ String BamQC::GenRscript_DepthCoverage_Plot()
     }
     s+=");\n";
     names_arg+=")";
-    s = s + "barplot(x, names.arg="+names_arg+", ylim=range(0, max(x)), xlab='Bam file index', ylab='Mean depth', col='light blue', main='" + label + " Mean depth of sequencing');\n";
-    return(s);
-}
 
-
-String BamQC::GenRscript_Q20_Plot()
-{
-    StringArray bamLabelArray;
-    bamLabelArray.ReplaceTokens(bamLabel, ",");
-    String s, names_arg;
-    s+="x=c(";
-    names_arg +="c(";
+    s+="x2=c(";    
     for(int i=0; i<bamFiles.Length(); i++)
     {
         s+=double(stats[i].nQ20)/1000000;
-        if(bamLabel.Length()>0)
-            names_arg = names_arg + "'" + bamLabelArray[i] + "'";
-        else names_arg+=(i+1);
-
         if(i<(bamFiles.Length()-1)){
             s+=",";
-            names_arg+=",";
         }
     }
     s+=");\n";
-    names_arg+=")";
-    s = s + "barplot(x, names.arg="+names_arg+", ylim=range(0, max(x)), xlab='Bam file index', ylab='Q20 count in million', col='light blue', main='" + label + " Empirical Q20 count');\n";
-    s = s + "abline(h=6000, col='red', lty=2);\n";
+
+    s += "ylim = range(-max(x2), max(x1)) * 1.2;\n";
+    s += "y1lim = range(0, max(x1)) * 1.2;\n";
+    s += "y2lim = range(-max(x2), 0) * 1.2;\n";
+    s += "barplot(x1, ylim= ylim, axes = F, names.arg=" + names_arg + ", xlab=\'Bam file index\', col=\'light blue\', main='" + label + "\\nMean depth of sequencing / Empirical Q20 count\');\n";
+    s += "barplot(-x2, ylim= ylim, axes = F, add = T, col = \'light pink\');\n";
+
+    s += "tick.pos = pretty(y1lim);\n";
+    s += "tick.text = as.character(pretty(y1lim));\n";
+    s += "tick.text[1] = NA;\n";
+    s += "axis(side = 2, at = tick.pos, labels = tick.text );\n";
+    s += "abline(h=tick.pos, lty=\"dotted\", col = \"lightgray\");\n";
+
+    s += "tick.pos = pretty(y2lim);\n";
+    s += "axis(side = 2, at = pretty(y2lim), labels= as.character(-pretty(y2lim)));\n";
+    s += "abline(h=tick.pos, lty=\"dotted\", col = \"lightgray\");\n";
+
+    s += "mtext(side = 2, \'Mean depth\', adj = 1, line = 3, cex = par()$cex * 1.2);\n";
+    s += "mtext(side = 2, \'Q20 count in million\', adj = 0, line = 3, cex = par()$cex * 1.2);\n";
+
+    // s = s + "barplot(x, names.arg="+names_arg+", ylim=range(0, max(x)), xlab='Bam file index', ylab='Mean depth', col='light blue', main='" + label + " Mean depth of sequencing');\n";
     return(s);
 }
 
