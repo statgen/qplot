@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
   int nRecords = -1;
 
   String reference = "/data/local/ref/karma.ref/human.g1k.v37.umfa";
-  String dbSNPFile = "/home/bingshan/data/db/dbSNP/dbSNP130.UCSC.coordinates.tbl";
+  String dbSNPFile = "/net/wonderland/home/bingshan/data/db/dbSNP/dbSNP130.UCSC.coordinates.tbl";
   String gcContentFile = "/share/swg/bingshan/db/gccontent/human.g1k.w100.gc";
   String regions;
   String gcContentFile_create;
