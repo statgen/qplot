@@ -78,11 +78,6 @@ public:
      * so we can swap them
      */
     void beginNewRead(const uint64_t& pos);
-    /**
-     * @return frequency table
-     * by default: freq from 0 - 254 is counted
-     * this should be called at last
-     */
     void clear() {
         this->vector1->setStart(0);
         this->vector1->clear();
@@ -90,6 +85,11 @@ public:
         this->vector1->clear();
         std::fill(this->freqTable.begin(), this->freqTable.end(), 0);
     };
+    /**
+     * @return frequency table
+     * by default: freq from 0 - 254 is counted
+     * this should be called at last
+     */
     const std::vector<uint32_t> & getFreqDist(){
         calculateFrequency(this->vector1);
         calculateFrequency(this->vector2);

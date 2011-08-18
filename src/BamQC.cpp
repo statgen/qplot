@@ -712,8 +712,8 @@ String BamQC::GenRscript_DepthCoverage_Q20_Plot()
     s += "axis(side = 2, at = tick.pos, labels = tick.text );\n";
     s += "abline(h=tick.pos, lty=\"dotted\", col = \"lightgray\");\n";
 
-    s += "tick.pos = pretty(y2lim);\n";
-    s += "axis(side = 2, at = pretty(y2lim), labels= as.character(-pretty(y2lim*ratio, n=length(pretty(y2lim)))));\n";
+    s += "tick.pos = pretty(y2lim*ratio)/ratio;\n";
+    s += "axis(side = 2, at = tick.pos, labels= as.character(-pretty(y2lim*ratio)));\n";
     s += "abline(h=tick.pos, lty=\"dotted\", col = \"lightgray\");\n";
 
     s += "mtext(side = 2, \'Mean depth\', adj = 1, line = 3, cex = par()$cex * 1.2);\n";
