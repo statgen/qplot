@@ -214,7 +214,7 @@ void BamQC::LoaddbSNP(String & dbSNPFile)
     fprintf(stderr, "DONE!\n");
 }
 
-void BamQC::LoadRegions(String & regionsFile)
+void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
 {
     if(regionsFile.Length()==0) return;
 
@@ -256,6 +256,20 @@ void BamQC::LoadRegions(String & regionsFile)
         tokens.Clear();
         buffer.Clear();
     }
+
+    uint64_t sites = 0;
+    if (invertRegion) {
+        fprintf(stderr, " invert region...");
+        for (uint32_t i = 0; i < regionIndicator.size(); i++) {
+            regionIndicator[i] = !regionIndicator[i];
+            if (regionIndicator[i]) sites++;
+        }
+    } else {
+        for (uint32_t i = 0; i < regionIndicator.size(); i++) {
+            if (regionIndicator[i]) sites++;
+        }
+    }
+    fprintf(stderr, " total region length = %lu ", sites);
     ifclose(fhRegions);
     fprintf(stderr, "DONE!\n");
 }
@@ -699,7 +713,7 @@ String BamQC::GenRscript_DepthCoverage_Q20_Plot()
     s += "abline(h=tick.pos, lty=\"dotted\", col = \"lightgray\");\n";
 
     s += "tick.pos = pretty(y2lim);\n";
-    s += "axis(side = 2, at = pretty(y2lim), labels= as.character(-pretty(y2lim*ratio)));\n";
+    s += "axis(side = 2, at = pretty(y2lim), labels= as.character(-pretty(y2lim*ratio, n=length(pretty(y2lim)))));\n";
     s += "abline(h=tick.pos, lty=\"dotted\", col = \"lightgray\");\n";
 
     s += "mtext(side = 2, \'Mean depth\', adj = 1, line = 3, cex = par()$cex * 1.2);\n";

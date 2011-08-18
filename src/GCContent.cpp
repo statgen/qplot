@@ -69,7 +69,7 @@ GCContent::~GCContent(){
 	}
 };
 
-void GCContent::LoadRegions(String & regionsFile, GenomeSequence &genome)
+void GCContent::LoadRegions(String & regionsFile, GenomeSequence &genome, bool invertRegion)
 {
     if(regionsFile.Length()==0) return;
     if(genome.sequenceLength()==0) error("No reference genome loaded!\n");
@@ -111,10 +111,17 @@ void GCContent::LoadRegions(String & regionsFile, GenomeSequence &genome)
         tokens.Clear();
         buffer.Clear();
     }
+
+    if (invertRegion) {
+        fprintf(stderr, " invert region...");
+        for (uint32_t i = 0; i < regionIndicator.size(); i++) {
+            regionIndicator[i] = !regionIndicator[i];
+        }
+    }
+
     ifclose(fhRegions);
     fprintf(stderr, "DONE!\n");
 }
-
 
 void GCContent::ReadGCContent(String infile)
 {
@@ -189,7 +196,7 @@ void GCContent::CalcGCCount()
     }
 }
 
-void GCContent::OutputGCContent(String & reference, int windowSize, String &gcContentFile, String &regionFile)
+void GCContent::OutputGCContent(String & reference, int windowSize, String &gcContentFile, String &regionFile, bool invertRegion)
 {
 
     GenomeSequence genome;
@@ -209,7 +216,7 @@ void GCContent::OutputGCContent(String & reference, int windowSize, String &gcCo
         error("Open  reference failed...!\n");
 
 
-    LoadRegions(regionFile, genome);
+    LoadRegions(regionFile, genome, invertRegion);
 
     printf("%u %u\n", (unsigned int) regionIndicator.size(), genome.sequenceLength());
 

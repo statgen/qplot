@@ -37,14 +37,14 @@ class GCContent
   void SetWindowSize(int);
   void ResetWindowSize(int);
   void SetZeroCount();
-  void LoadRegions(String&, GenomeSequence &);
+  void LoadRegions(String&, GenomeSequence &, bool invertRegion);
   void ReadGCContent(String);
   void CalcGCCount();
   void CalcGCFreq();
   void CalcStatsByGC(uint8_t *);
   void IncrementStatsByGC(uint32_t start, int len);
   void OutputFreq(String);
-  void OutputGCContent(String & genome, int windowSize, String &gcContentFile, String &regionFile);
+  void OutputGCContent(String & genome, int windowSize, String &gcContentFile, String &regionFile, bool invertRegion);
 };
 
 
