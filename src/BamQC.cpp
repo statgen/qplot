@@ -504,7 +504,7 @@ String BamQC::GenRscript_EPSvsPhred_Plot()
     //s += "grid(10, 10, col=grid.col);\n";
     s += "abline(v=pretty(seq(MAX.X*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(seq(MAX.Y), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
-    s += "mtext(text=\"Read Count (M)\", side=4, line= 2.5, cex=par()$cex*1.2)\n";
+    s += "mtext(text=\"Base Count (M)\", side=4, line= 2.5, cex=par()$cex*1.2)\n";
     s += "axis.left.tick = pretty(seq(MAX.Y))\n";
     s += "axis.right.tick = axis.left.tick[axis.left.tick <= 20]\n";
     s += "axis.right.text = round(ratio * axis.right.tick, 1)\n";
