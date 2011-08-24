@@ -636,12 +636,12 @@ String BamQC::GenRscript_DepthDist_Plot()
     s += "Y[[i]]=(sum(Y[[i]]) - cumsum(Y[[i]]))/total.site * 100; ";
     s += "}\n";
 
-    s += "MAX.X=0; MAX.Y=0; \n for(i in 1:NFiles){\n tmp = length(which(Y[[i]] > max(Y[[i]])*.05)) * 2; \n if (MAX.X < tmp) MAX.X = tmp; \n if (MAX.Y < max(Y[[i]])) MAX.Y = max(Y[[i]]); }\n";
-    s = s + "plot(X[[1]],Y[[1]], xlim=range(1, min(MAX.X,10)), ylim=range(0,MAX.Y*1.2), xlab='Depth', ylab='Percentage of covered sites', pch = '+', type='b', col=colvec[1], main='" + label + " Depth distribution');\n";
+    s += "MAX.X=0; MAX.Y=0; \nfor(i in 1:NFiles){\n tmp = length(which(Y[[i]] > max(Y[[i]])*0.6)) ; \n if (tmp < 10) tmp = 10; \n if (MAX.X < tmp) MAX.X = tmp; \n if (MAX.Y < max(Y[[i]])) MAX.Y = max(Y[[i]]); }\n";
+    s = s + "plot(X[[1]],Y[[1]], xlim=range(1, MAX.X), ylim=range(0,MAX.Y*1.2), xlab='Depth', ylab='Percentage of covered sites', pch = '+', type='b', col=colvec[1], main='" + label + " Depth distribution');\n";
     s += "if(NFiles>1) \n for(i in 2:NFiles) points(X[[i]], Y[[i]], col=colvec[i], pch = '+', type='b');\n";
     s += "legend(\"topright\",legend=depth.legend.txt, col=colvec, lty=lty.vec);\n";
     // s += "grid(10,10, col=grid.col);\n";
-    s += "abline(v=pretty(range(0,min(MAX.X, 10)), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
+    s += "abline(v=pretty(range(0,MAX.X), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "abline(h=pretty(range(0,MAX.Y*1.2), n= 10), lty=\"dotted\", col = \"lightgray\")\n";
     s += "\n";
     return(s);
