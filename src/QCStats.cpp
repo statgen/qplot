@@ -4,6 +4,7 @@
 #include "CigarRoller.h"
 
 #include <cmath>
+#include <set>
 
 #define MIN_MAPQ 10
 #define SIZE_RESERVED 10000
@@ -207,10 +208,19 @@ double QCStats::CalcMisMatchRateByCycle_MEAN()
 void QCStats::CalcMisMatchRateByQual()
 {
     std::map<int, uint64_t>::iterator p;
-    qual.clear();
-
+    // store all possible qual values
+    std::set<int> possibleQual;
     for(p=matchCountByQual.begin(); p!=matchCountByQual.end(); p++)
-        qual.push_back(p->first);
+        possibleQual.insert(p->first);
+    for(p=misMatchCountByQual.begin(); p!=misMatchCountByQual.end(); p++)
+        possibleQual.insert(p->first);
+
+    // store quality in increasing order to variable "qual"
+    qual.clear();
+    for (std::set<int>::iterator iter = possibleQual.begin(); 
+         iter != possibleQual.end(); 
+         iter++) 
+        qual.push_back(*iter);
 
     for(unsigned int i=0; i<qual.size(); i++)
     {
