@@ -46,12 +46,14 @@ private:
     uint64_t start; // 0-based index
     uint64_t len;
     uint32_t* vector;
-};
+}; // end DepthVector
 
 class DepthCounter{
 public:
     DepthCounter(){
-        Init(65536);
+        // Increase DepthVector length so that avoid aborting.
+        // Init(65536);
+        Init(1048576);
     }
     DepthCounter(uint64_t len) {
         Init(len);
