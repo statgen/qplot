@@ -2,6 +2,7 @@
 #include "Sequence.h"
 #include "QSamFlag.h"
 #include "CigarRoller.h"
+#include "BaseAsciiMap.h"
 
 #include <cmath>
 #include <set>
@@ -589,7 +590,7 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
         if((*dbSNP).size()>0 && (*dbSNP)[refpos]==true) continue;
 
         refBase = toupper((*referencegenome)[refpos]);
-        if(flag.isReverse==true) refBase = GenomeSequence::base2complement[(uint32_t) refBase];
+        if(flag.isReverse==true) refBase = BaseAsciiMap::base2complement[(uint32_t) refBase];
 
         seqpos = i + offset2;
         readBase = toupper(sam.getSequence()[seqpos]);
@@ -597,7 +598,7 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
         cycleIdx = seqpos;
         if(flag.isReverse==true){
             cycleIdx = nCycles-seqpos-1;
-            readBase = GenomeSequence::base2complement[(uint32_t) readBase];
+            readBase = BaseAsciiMap::base2complement[(uint32_t) readBase];
         }
 
         // Maped based
@@ -608,10 +609,10 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
         //
         // NB: when bases match the reference, they are returned as '=',
         // which base2int maps to 5.  But the libsrc Sam code returns '0'
-        // instead, which maps to 0 (because GenomeSequence::base2int
+        // instead, which maps to 0 (because BaseAsciiMap::base2int
         // maps color space values as well as base space values).
         //
-        if(readBase!='=' && readBase != '0') baseCountByCycle[cycleIdx][GenomeSequence::base2int[(uint32_t) readBase]]++;
+        if(readBase!='=' && readBase != '0') baseCountByCycle[cycleIdx][BaseAsciiMap::base2int[(uint32_t) readBase]]++;
         // Base transition matrix (not yet implemented the plotting)
         // matchMatrix[Sequence::nt2idx(refBase)][Sequence::nt2idx(readBase)]++;
 
