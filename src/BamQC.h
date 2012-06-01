@@ -21,6 +21,7 @@ class BamQC
   String bamLabel;
   String lanes;
   std::map<int, int> lanes2Process;
+  std::vector<std::string> readGroup2Process;
   int size;
   std::vector<bool> dbSNPIndicator;
   std::vector<bool> regionIndicator;
@@ -47,6 +48,7 @@ class BamQC
   void SetLabel(String &lb) { label = lb; }
   void SetBamLabels(String &lb) {bamLabel = lb; }
   void SetLanes2Process(String &);
+  void SetReadGroup2Process(String &);
   void LoadRegions(String &, bool invert); // if @param invert = true: we need to flip the regionIndicator; o/w, do nothing.
   void LoadGenomeSequence(String & refGenomeFile);
   void LoaddbSNP(String & dbSNPFile);

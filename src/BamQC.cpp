@@ -55,6 +55,15 @@ void BamQC::SetLanes2Process(String &ln)
         lanes2Process[tokens[i].AsInteger()]++;
 }
 
+void BamQC::SetReadGroup2Process(String& rg)
+{
+  this->readGroup2Process.clear();
+    StringArray tokens;
+    tokens.ReplaceTokens(rg, ",");
+    for(int i=0; i<tokens.Length(); i++)
+      this->readGroup2Process.push_back(tokens[i].c_str());
+};
+
 void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
 {
     if(!noGC)
@@ -118,7 +127,7 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
             //stats[i].PrintSamRecord(sam);
             flag.GetFlagFields(samRecord.getFlag());
             // XXX this call winds up processing unmapped records and prints error messsages:
-            stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process);
+            stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
             if(stats[i].size>size) size = stats[i].size;
             if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
         }

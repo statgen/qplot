@@ -112,7 +112,7 @@ public:
   void CalcInsertSize_medium();
   void PrintSamRecord(SamRecord &);
   void ReportWarningCount();
-  void UpdateStats(SamRecord &, QSamFlag &filter, double, std::map<int, int> &);
+  void UpdateStats(SamRecord &, QSamFlag &filter, double, std::map<int, int> &, std::vector<std::string>& readGroups);
 };
 
 #endif

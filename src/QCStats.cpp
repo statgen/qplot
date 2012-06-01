@@ -445,14 +445,35 @@ void QCStats::PrintSamRecord(SamRecord &sam)
 #endif
 }
 
-void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQuality, std::map<int, int> &lanes)
+void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQuality, std::map<int, int> &lanes, std::vector<std::string>& readGroups)
 {
     if(lanes.size()>0) {
         StringArray tokens;
         tokens.Clear();
         tokens.AddTokens(sam.getReadName(), ":");
         if(lanes[tokens[1].AsInteger()]==0) return;
-    }
+    };
+
+    if (readGroups.size() > 0) {
+      String* p_rg = sam.getStringTag("RG");
+      if (p_rg == NULL) return;
+      String& rg = *p_rg;
+      bool match = true;
+      for (unsigned int i = 0; i < readGroups.size(); i++) {
+        for (unsigned int j = 0; j < readGroups[i].size(); j++ ){
+          if (j == rg.Length()) {
+            match = false;
+            break;
+          }
+          if (readGroups[i][j] != rg[j]) {
+            match = false;
+            break;
+          }
+        }
+        if (match) break;
+      }
+      if (!match) return;
+    };
 
     QSamFlag flag;
     flag.GetFlagFields(sam.getFlag());

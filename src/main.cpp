@@ -14,9 +14,9 @@ int main(int argc, char *argv[])
     double minMapQuality = 0;
     int nRecords = -1;
 
-    String reference = "/data/local/ref/karma.ref/human.g1k.v37.umfa";
-    String dbSNPFile = "/net/wonderland/home/bingshan/data/db/dbSNP/dbSNP130.UCSC.coordinates.tbl";
-    String gcContentFile = "/share/swg/bingshan/db/gccontent/human.g1k.w100.gc";
+    String reference = "/net/fantasia/home/zhanxw/software/qplot/data/human.g1k.v37.fa";
+    String dbSNPFile = "/net/fantasia/home/zhanxw/software/qplot/data/dbSNP130.UCSC.coordinates.tbl";
+    String gcContentFile = "/net/fantasia/home/zhanxw/software/qplot/data/human.g1k.w100.gc";
     String regions;
     bool invertRegion = false; // by default, not invert regionIndicator
     String gcContentFile_create;
@@ -175,6 +175,7 @@ int main(int argc, char *argv[])
     qc.page = page;
 
     qc.SetLanes2Process(lanes);
+    qc.SetReadGroup2Process(readGroup);
     qc.SetNumRecords2Process(nRecords);
     qc.SetGCInputFile(gcContentFile);
     qc.SetLabel(label);
