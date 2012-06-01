@@ -30,9 +30,11 @@ int main(int argc, char *argv[])
     String label;
     String bamLabel;
     String lanes;
-
+    String readGroup;
+    
     bool noGC = false;
     bool noDepth = false;
+    bool noeof = false;
     int page = 2;
 
     BEGIN_LONG_PARAMETERS(longParameters)
@@ -60,6 +62,10 @@ int main(int argc, char *argv[])
         LONG_INTPARAMETER("first_n_record", &nRecords)
         LONG_PARAMETER_GROUP("Lanes to process")
         LONG_STRINGPARAMETER("lanes", &lanes)
+        LONG_PARAMETER_GROUP("Read group to process")
+        LONG_STRINGPARAMETER("readGroup", &readGroup)
+        LONG_PARAMETER_GROUP("Input file options")
+        LONG_PARAMETER("noeof", &noeof)
         LONG_PARAMETER_GROUP("Output files")
         LONG_STRINGPARAMETER("plot", &plotFile)
         LONG_STRINGPARAMETER("stats", &statsFile)
@@ -160,7 +166,10 @@ int main(int argc, char *argv[])
     filter.SetQCFail(!keepQCFail);
 
     BamQC qc(bamFiles);
-
+    if (noeof) {
+      qc.SkipCheckEof();
+    };
+    
     qc.noGC = noGC;
     qc.noDepth = noDepth;
     qc.page = page;

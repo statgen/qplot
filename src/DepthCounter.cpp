@@ -58,7 +58,7 @@ void DepthCounter::beginNewRead(const uint64_t& pos){
         //assert(pos >= this->vector1->getStart());
         if (pos >= this->vector1->getStart()) {
         } else {
-            fprintf(stderr, "Rewind distVec.\n");
+            fprintf(stderr, "WARNING: Rewind distVec - this means your input files may not be sorted.\n");
             calculateFrequency(this->vector1);
             calculateFrequency(this->vector2);
             this->vector1->setStart(pos);

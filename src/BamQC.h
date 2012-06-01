@@ -41,6 +41,7 @@ class BamQC
   BamQC(StringArray &, int);
   ~BamQC();
   void Init(StringArray &, int);
+  void SkipCheckEof();  
   void SetGCInputFile(String &in){ GCInputFile = in; };
   void SetQCStatsReferencePtr();
   void SetLabel(String &lb) { label = lb; }

@@ -1,7 +1,7 @@
 #include "BamQC.h"
 #include <cmath>
 #include "InputFile.h"
-
+#include "BgzfFileType.h" // to enable --noeof
 #define INIT_LEN 1000
 
 BamQC::BamQC(){
@@ -39,6 +39,11 @@ void BamQC::Init(StringArray &bams, int len)
     refBaseNCount=0;
     noDepth = noGC = false;
     page = 2;
+}
+
+void BamQC::SkipCheckEof() {
+  // turning off noef
+  BgzfFileType::setRequireEofBlock(false);
 }
 
 void BamQC::SetLanes2Process(String &ln)
