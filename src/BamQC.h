@@ -56,6 +56,7 @@ class BamQC
   void SetNumRecords2Process(int n) { nRecords2Process=n; }
   void CalculateQCStats(QSamFlag &filter, double minMapQual);
   void OutputStats(String &);
+  void OutputXML(FILE *pf);
   //void OutputPlotData(String &);
   void Plot(String &, FILE*);
   String GenRscript_EPSvsPhred_Plot();
