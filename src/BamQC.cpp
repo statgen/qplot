@@ -30,6 +30,16 @@ class Graph{
     buffer << xaxis;
     buffer << "</xaxis>";
   }
+  void setXaxisTitle(const char* xaxis, int xmin) {
+    buffer << "<xaxis min=\"" << xmin << "\">";
+    buffer << xaxis;
+    buffer << "</xaxis>";
+  }
+  void setXaxisTitle(const char* xaxis, int xmin, int xmax) {
+    buffer << "<xaxis min=\"" << xmin << "\" max = \"" << xmax << "\">";
+    buffer << xaxis;
+    buffer << "</xaxis>";
+  }
   void setYaxisTitle(const char* yaxis) {
     buffer << "<yaxis>";
     buffer << yaxis;
@@ -85,6 +95,14 @@ class Graph{
   std::ostringstream buffer;
 };
 
+// utility function
+void dump(const char* s, const std::vector<double> x){
+  printf("%s\t", s);
+  for (unsigned int i = 0; i < x.size(); i++) {
+    printf("%.2f, ", x[i]);
+  }
+  printf("\n");
+};
 
 BamQC::BamQC(){
   noDepth = false;
@@ -577,8 +595,8 @@ void BamQC::OutputXML(FILE *fp)
   
   graph.newPlot();
   graph.setTitle("GC Content");
-  graph.setXaxisTitle("Cycle");
-  graph.setYaxisTitle("Empirical Phred", 0, 2);
+  graph.setXaxisTitle("Normalized Mean Depth");
+  graph.setYaxisTitle("GC content quantile", 0, 2);
   for (int idx = 0; idx < bamFiles.Length(); idx ++ ) {
     x.clear(); y.clear();
     for(unsigned int i=1; i <= 100; i++)
@@ -588,16 +606,16 @@ void BamQC::OutputXML(FILE *fp)
         y.push_back(stats[idx].depthVsGC_norm[i]);
       } else {
         // y+="NA";
-        x.push_back(GC.gcContentVec[i]);        
-        y.push_back(0);
+        // x.push_back(GC.gcContentVec[i]);        
+        // y.push_back(0);
       }
     }
     // cumsum(x) / sum(x) # normalized GC content
-    for (int i = 2; i <= 100; i++) {
+    for (unsigned int i = 1; i < x.size() ; i++) {
       x[i] += x[i-1];
     }
-    for (int i = 1; i <= 100; i++) {
-      x[i] /= x[100];
+    for (unsigned int i = 0; i < x.size(); i++) {
+      x[i] /= x.back();
     }
     graph.addData(bamLabelArray[idx].c_str(), x, y);
   }
@@ -613,7 +631,7 @@ void BamQC::OutputXML(FILE *fp)
     x.clear(); y.clear();
     std::map<int32_t, uint64_t>::iterator p;
     for(p=stats[idx].insertSize.begin(); p!=stats[idx].insertSize.end(); p++) {
-      if (p->first > 1000) continue;  // insert size too skip, so skipping
+      if (p->first > 800) continue;  // insert size too large, so skipping
       x.push_back(p->first);
       y.push_back(p->second);
     }
@@ -639,7 +657,7 @@ void BamQC::OutputXML(FILE *fp)
 
   graph.newPlot();
   graph.setTitle("Depth Distribution");
-  graph.setXaxisTitle("Depth");
+  graph.setXaxisTitle("Depth", 0, 200); // 
   graph.setYaxisTitle("Percentage of Covered Site");
 
   uint64_t sites = 0;
@@ -650,26 +668,24 @@ void BamQC::OutputXML(FILE *fp)
       if (regionIndicator[i]) sites++;
     }
   }
-
   for (int idx = 0; idx < bamFiles.Length(); idx ++ ) {
     x.clear(); y.clear();
     uint64_t sumY = 0;
     std::map<int, uint64_t>::iterator p;
     for(p=stats[idx].depthDist.begin(); p!=stats[idx].depthDist.end(); p++) {
-      x.push_back(p->first);
-      y.push_back(p->second);
+      x.push_back(p->first); // depth
+      y.push_back(p->second);// freq
       sumY += p->second;
     }
-    //
-    for (int yi = 1; yi < y.size(); ++yi) {
+    for (unsigned int yi = 1; yi < y.size(); ++yi) {
       y[yi] += y[yi-1];
     }
-    for (int yi = 0; yi < y.size(); ++yi) {
-      y[yi] += (sumY - y[yi]) / sites * 100;
+    for (unsigned int yi = 0; yi < y.size(); ++yi) {
+      y[yi] = (sumY - y[yi]) / sites * 100;
     }
     std::ostringstream s;
     s << bamLabelArray[idx].c_str();
-    s << " (No coverage = " << (1.0 - sumY) / sites * 100 << "%)";
+    s << " (No coverage = " << (1.0 - sumY / sites) * 100 << "%)";
     graph.addData(s.str().c_str(), x, y);
   }
   graph.closePlot();
