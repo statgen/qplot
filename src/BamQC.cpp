@@ -385,7 +385,13 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
   }
   fprintf(stderr, " total region length = %lu ", sites);
   ifclose(fhRegions);
+
+  if ( 0 == (int) sites ) {
+    fprintf(stderr, "WARNING!! Your total region length is ZERO, please check your region file!");
+  };
+
   fprintf(stderr, "DONE!\n");
+  
 }
 
 
