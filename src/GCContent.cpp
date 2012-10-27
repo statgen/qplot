@@ -97,6 +97,7 @@ void GCContent::LoadRegions(String & regionsFile, GenomeSequence &genome, bool i
         genomeIndex_t startGenomeIndex = 0;
         int chromosomeIndex = tokens[1].AsInteger();
 
+        // use chromosome name (token[0]) and position (token[1]) to query genome index.
         startGenomeIndex = genome.getGenomePosition(tokens[0].c_str(), chromosomeIndex);
 
         if(startGenomeIndex >= regionIndicator.size() ) {
@@ -132,6 +133,13 @@ void GCContent::ReadGCContent(String infile)
             exit(1);
         }
     }
+    // sanity check
+    if ( mf.getFileSize() != (size_t)genome->sequenceLength() + sizeof(uint32_t) * 101 ) { // 101: GC distribution is from 0 to 100.
+      fprintf(stderr, "\n !!Error!! \nGC file [ %s ] does not match reference genome. Please regenerat using --create_gc and --reference options.\n", infile.c_str());
+      fprintf(stderr, "Reference genome length from --reference: %u\n", genome->sequenceLength());
+      fprintf(stderr, "Reference genome length inferred from GC content file: %zu\n", mf.getFileSize() - sizeof(uint32_t) * 101);
+    };
+    
     this->gcCount = (uint8_t*) mf.data;
     this->gcContentVec = (uint32_t*) ( (char*)mf.data+ genome->sequenceLength());
 
