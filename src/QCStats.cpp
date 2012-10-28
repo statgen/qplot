@@ -562,6 +562,8 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
 
     int offset = 0; //to adjust position in ref genome due to insertion 'I' and 'S'
     int offset2 = 0;  //to adjust position in a read due to deletion 'D'
+    int offset3 = 0; //to adjust positions due to hard clip 'H' at the start
+    int offset4 = 0; //to adjust positions due to hard clip 'H' at the end
     int nCycles = sam.getReadLength();
 
     char refBase, readBase;
@@ -572,21 +574,32 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     bool coverRegion = false;
 
     bool isNewRead = true;
+    bool hardclip_head = true;
+
     for (int i = 0; i < aligTypes.Length(); i++) {
         if (aligTypes[i] == 'S') {
             offset--;
+            hardclip_head = false;
             continue;
         }
         else if (aligTypes[i] == 'I') {
             offset--;
+            hardclip_head = false;
+
             continue;
         }
         else if (aligTypes[i] == 'D' || aligTypes[i] == 'N') {
             offset2--;
+            hardclip_head = false;
             continue;
         }
+	else if(aligTypes[i] == 'H') {
+             if(hardclip_head) offset3--;
+	     else offset4--;
+	     continue;
+	}
 
-        refpos = mapPos + i + offset;
+        refpos = mapPos + i + offset3 + offset;
 
         if((*regionIndicator).size()>0)
         {
@@ -613,12 +626,14 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
         refBase = toupper((*referencegenome)[refpos]);
         if(flag.isReverse==true) refBase = BaseAsciiMap::base2complement[(uint32_t) refBase];
 
-        seqpos = i + offset2;
+        seqpos = i + offset2 + offset3;
         readBase = toupper(sam.getSequence()[seqpos]);
 
-        cycleIdx = seqpos;
+        cycleIdx = seqpos - offset3;
+//printf("CIGAR=%s:Len=%d\nrefpos=%d offset=%d offset2=%d offset3=%d offset4=%d seqpos=%d cycleIdx=%d isReverse=%d\n", aligTypes.c_str(), aligTypes.Length(), refpos, offset, offset2, offset3, offset4, seqpos, cycleIdx, flag.isReverse);
+
         if(flag.isReverse==true){
-            cycleIdx = nCycles-seqpos-1;
+            cycleIdx = nCycles - offset3 - offset4 - cycleIdx - 1;
             readBase = BaseAsciiMap::base2complement[(uint32_t) readBase];
         }
 
