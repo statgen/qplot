@@ -213,6 +213,10 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     if(!sam.ReadHeader(samHeader)) {
       error("Read BAM file header %s failed!\n", bamFiles[i].c_str());
     }
+    if(!sam.ReadBamIndex()) {
+      error("Read BAM file index %s failed!\n", bamFiles[i].c_str());
+    }
+
 
     QSamFlag flag;
 
@@ -222,14 +226,25 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     // XXX This loop is processing all records, regardless
     // of whether they are mapped or not - is this the intention?
     //
-    while(sam.ReadRecord(samHeader, samRecord))
-    {
-      //stats[i].PrintSamRecord(sam);
-      flag.GetFlagFields(samRecord.getFlag());
-      // XXX this call winds up processing unmapped records and prints error messsages:
-      stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
-      if(stats[i].size>size) size = stats[i].size;
-      if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
+    for (int c = 1; c <= 22; ++c ){
+      char chrom[10];
+      fprintf(stderr, "Check chromosome %d\n", c);
+      sprintf(chrom, "%d", c);
+      sam.SetReadSection(chrom, 5000000, 10000000);
+      while(sam.ReadRecord(samHeader, samRecord))
+      {
+        // fprintf(stdout, "Out use 5M - 10M region");
+        // int32_t pos = samRecord.get1BasedPosition();
+        // if (pos < 5000000 || pos > 10000000) {
+        //   continue;
+        // }
+        //stats[i].PrintSamRecord(sam);
+        flag.GetFlagFields(samRecord.getFlag());
+        // XXX this call winds up processing unmapped records and prints error messsages:
+        stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
+        if(stats[i].size>size) size = stats[i].size;
+        if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
+      }
     }
     stats[i].ReportWarningCount();
     stats[i].CalcMisMatchRateByCycle();
@@ -391,7 +406,7 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
   };
 
   fprintf(stderr, "DONE!\n");
-  
+
 }
 
 
@@ -569,7 +584,7 @@ void BamQC::OutputXML(FILE *fp)
       x.push_back(stats[idx].qual[i]);
       y.push_back( double(stats[idx].qualCount[q[i]])/1000000 );
     }
-    graph.addData(bamLabelArray[idx].c_str(), x, y);    
+    graph.addData(bamLabelArray[idx].c_str(), x, y);
   }
   graph.closePlot();
 
@@ -598,7 +613,7 @@ void BamQC::OutputXML(FILE *fp)
   graph.closePlot();
 
   // skip GenRscript_CycleDist_Data()
-  
+
   graph.newPlot();
   graph.setTitle("GC Content");
   graph.setXaxisTitle("Normalized Mean Depth");
@@ -608,11 +623,11 @@ void BamQC::OutputXML(FILE *fp)
     for(unsigned int i=1; i <= 100; i++)
     {
       if(stats[idx].depthVsGC_norm[i]>0) {
-        x.push_back(GC.gcContentVec[i]);        
+        x.push_back(GC.gcContentVec[i]);
         y.push_back(stats[idx].depthVsGC_norm[i]);
       } else {
         // y+="NA";
-        // x.push_back(GC.gcContentVec[i]);        
+        // x.push_back(GC.gcContentVec[i]);
         // y.push_back(0);
       }
     }
@@ -625,7 +640,7 @@ void BamQC::OutputXML(FILE *fp)
     }
     graph.addData(bamLabelArray[idx].c_str(), x, y);
   }
-  
+
   graph.closePlot();
 
 
@@ -663,7 +678,7 @@ void BamQC::OutputXML(FILE *fp)
 
   graph.newPlot();
   graph.setTitle("Depth Distribution");
-  graph.setXaxisTitle("Depth", 0, 200); // 
+  graph.setXaxisTitle("Depth", 0, 200); //
   graph.setYaxisTitle("Percentage of Covered Site");
 
   uint64_t sites = 0;
