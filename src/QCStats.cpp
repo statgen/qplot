@@ -455,9 +455,9 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     };
 
     if (readGroups.size() > 0) {
-      String* p_rg = sam.getStringTag("RG");
+        const String* p_rg = sam.getStringTag("RG");
       if (p_rg == NULL) return;
-      String& rg = *p_rg;
+      const String& rg = *p_rg;
       bool match = true;
       for (unsigned int i = 0; i < readGroups.size(); i++) {
         for (unsigned int j = 0; j < readGroups[i].size(); j++ ){
