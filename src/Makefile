@@ -6,8 +6,6 @@ TOOLBASE = GCContent  QSamFlag Sequence BamQC QCStats MmapFile DepthCounter
 SRCONLY=main.cpp
 HDRONLY=FlagDef.h
 
-USER_COMPILE_VARS = -lcrypto
-
 ########################
 # Include the base Makefile
 PARENT_MAKE = Makefile.src
