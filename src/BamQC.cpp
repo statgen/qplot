@@ -4,6 +4,30 @@
 #include "BgzfFileType.h" // to enable --noeof
 #define INIT_LEN 1000
 
+#include <inttypes.h>
+/**
+ * Follow 64/32 bit portiability coding standard
+ * http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#64-bit_Portability
+ */
+
+// printf macros for size_t, in the style of inttypes.h
+#ifdef _LP64
+#define __PRIS_PREFIX "z"
+#else
+#define __PRIS_PREFIX
+#endif
+
+// Use these macros after a % in a printf format string
+// to get correct 32/64 bit behavior, like this:
+// size_t size = records.size();
+// printf("%"PRIuS"\n", size);
+
+#define PRIdS __PRIS_PREFIX "d"
+#define PRIxS __PRIS_PREFIX "x"
+#define PRIuS __PRIS_PREFIX "u"
+#define PRIXS __PRIS_PREFIX "X"
+#define PRIoS __PRIS_PREFIX "o"
+
 class Graph{
  public:
   void newPlot() {
@@ -383,7 +407,7 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
       if (regionIndicator[i]) sites++;
     }
   }
-  fprintf(stderr, " total region length = %lu ", sites);
+  fprintf(stderr, " total region length = %"PRIu64" ", sites);
   ifclose(fhRegions);
   fprintf(stderr, "DONE!\n");
 }
@@ -969,7 +993,7 @@ String BamQC::GenRscript_DepthDist_Plot()
       if (regionIndicator[i]) sites++;
     }
   }
-  sprintf(temp, "%lu", sites);
+  sprintf(temp, "%"PRIu64"", sites);
   s += "total.site = ";
   s += temp;
   s += "\n";
