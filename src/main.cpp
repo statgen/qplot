@@ -3,6 +3,17 @@
 
 #include "Parameters.h"
 
+#include <sys/stat.h>
+bool fileExists(const char* path) {
+  struct stat sts;
+  if ((stat (path, &sts)) == -1)
+  {
+    return false; //printf ("The file %s doesn't exist...\n", argv [1]);
+  } else {
+    return true;
+  }
+}
+
 int main(int argc, char *argv[])
 {
   bool unpaired = false;
@@ -16,7 +27,8 @@ int main(int argc, char *argv[])
 
   String reference = "/net/fantasia/home/zhanxw/software/qplot/data/human.g1k.v37.fa";
   String dbSNPFile = "/net/fantasia/home/zhanxw/software/qplot/data/dbSNP130.UCSC.coordinates.tbl";
-  String gcContentFile = "/net/fantasia/home/zhanxw/software/qplot/data/human.g1k.w100.gc";
+  String gcContentFile = ""; // default GC content file /net/fantasia/home/zhanxw/software/qplot/data/human.g1k.w100.gc";
+  bool createGCContentFile = false; // not create GC file on the fly.
   String regions;
   bool invertRegion = false; // by default, not invert regionIndicator
   String gcContentFile_create;
@@ -33,7 +45,7 @@ int main(int argc, char *argv[])
   String lanes;
   String readGroup;
 
-  bool noGC = false;
+  const bool noGC = false;
   bool noDepth = false;
   bool noeof = false;
   int page = 2;
@@ -44,7 +56,7 @@ int main(int argc, char *argv[])
       LONG_STRINGPARAMETER("dbsnp", &dbSNPFile)
       LONG_STRINGPARAMETER("gccontent", &gcContentFile)
       LONG_PARAMETER_GROUP("Create gcContent file")
-      LONG_STRINGPARAMETER("create_gc",&gcContentFile_create)
+      EXCLUSIVE_PARAMETER("create_gc",&createGCContentFile)
       LONG_INTPARAMETER("winsize", &windowSize)
       LONG_PARAMETER_GROUP("Region list")
       LONG_STRINGPARAMETER("regions", &regions)
@@ -89,24 +101,40 @@ int main(int argc, char *argv[])
 
   pl.Status();
 
+  if(bamFiles.Length()==0)
+    error("No SAM/BAM files provided!\n");
+  
   if(reference.Length()==0)
     error("Reference not provided!\n");
 
-  if(gcContentFile.Length()==0 && gcContentFile_create.Length()==0)
-  {
-    error("No GC content file provided! You can create one based on window size of N by command option \n\t --create_gc gcContentFile --winsize N\n\n");
+  if (gcContentFile.Length() == 0) {
+    error("Please specify pre-computed GC content file or use [ --create_gc --gccontent GCContentFileName ]  flag\n");
   }
+  if (!fileExists(gcContentFile)) {
+    if (!createGCContentFile) {
+      fprintf(stderr,
+              "GC content file [ %s ] does not exists. You may use --create_gc file to create one.\n",
+              gcContentFile.c_str());
+      exit(1);
+    }
+    // create GC content file
+    FILE* fp = fopen(gcContentFile.c_str(), "wb");
+    if (fp == NULL) {
+      fprintf(stderr, "Cannot create GC content file [ %s ]\n", gcContentFile.c_str());
+      error("Fatal error: GC file create failed\n\n");
+    } else {
+      fclose(fp);
+    }
 
-  if(gcContentFile_create.Length()>0)
-  {
     GCContent GC;
     fprintf(stderr, "Creating GC content file...\n");
-    GC.OutputGCContent(reference, windowSize, gcContentFile_create, regions, invertRegion);
-    return(0);
+    GC.OutputGCContent(reference, windowSize, gcContentFile, regions, invertRegion);
+    fprintf(stderr, "GC content file [ %s ] created.\n", gcContentFile.c_str());
+  } else { 
+    if (createGCContentFile) {
+      fprintf(stderr, "GC content file [ %s ] already exists, ignore [ --create_gc ] flag.\n", gcContentFile.c_str());
+    };
   }
-
-  if(bamFiles.Length()==0)
-    error("No SAM/BAM files provided!\n");
 
   if(regions.Length() == 0 && invertRegion) {
     error("Need to specify --regions whenusing --invertRegion");

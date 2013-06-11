@@ -22,7 +22,7 @@ int MmapFile::open(const char* fileName) {
         perror("Cannot open file");
         exit(1);
     }
-    this->fileSize = getFileSize(fileName);
+    this->fileSize = ::getFileSize(fileName);
     if (data) {
         this->close();
     }

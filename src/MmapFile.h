@@ -17,7 +17,7 @@ class MmapFile{
     int open(const char* fileName);
     void close();
     void* data; // mmap() data goes here
-
+    size_t getFileSize() { return this->fileSize;};
   MmapFile():data(0){};
   private:
     size_t fileSize;
