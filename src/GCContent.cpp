@@ -226,7 +226,13 @@ void GCContent::OutputGCContent(String & reference, int windowSize, String &gcCo
 
     LoadRegions(regionFile, genome, invertRegion);
 
-    printf("%u %u\n", (unsigned int) regionIndicator.size(), genome.sequenceLength());
+    if (regionIndicator.size() == 0) {
+      printf("Calculate GC file for whole genome; ");
+    } else {
+      printf("Calculate GC file for specified region ( %u bp ); ",
+             (unsigned int) regionIndicator.size());
+    }
+    printf("Reference genome has %u bp\n", genome.sequenceLength());
 
     FILE * fh = fopen(gcContentFile.c_str(), "wb");
 
@@ -268,7 +274,7 @@ void GCContent::OutputGCContent(String & reference, int windowSize, String &gcCo
 
         fwrite(&gc, 1, sizeof(uint8_t), fh);
 
-        if(regionIndicator.size()>0 && regionIndicator[i]==false) gc = 0;
+        if(regionIndicator.size() > 0 && regionIndicator[i]==false) gc = 0;
         gcContentDist[gc]++;
     }
 

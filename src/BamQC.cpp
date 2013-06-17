@@ -4,29 +4,32 @@
 #include "BgzfFileType.h" // to enable --noeof
 #define INIT_LEN 1000
 
+#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
-/**
- * Follow 64/32 bit portiability coding standard
- * http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#64-bit_Portability
- */
+// /**
+//  * Follow 64/32 bit portiability coding standard
+//  * http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#64-bit_Portability
+//  * to deal with MSVC.
+//  * Comment it for now.
+//  */
 
-// printf macros for size_t, in the style of inttypes.h
-#ifdef _LP64
-#define __PRIS_PREFIX "z"
-#else
-#define __PRIS_PREFIX
-#endif
+// // printf macros for size_t, in the style of inttypes.h
+// #ifdef _LP64
+// #define __PRIS_PREFIX "z"
+// #else
+// #define __PRIS_PREFIX
+// #endif
 
-// Use these macros after a % in a printf format string
-// to get correct 32/64 bit behavior, like this:
-// size_t size = records.size();
-// printf("%"PRIuS"\n", size);
+// // Use these macros after a % in a printf format string
+// // to get correct 32/64 bit behavior, like this:
+// // size_t size = records.size();
+// // printf("%"PRIuS"\n", size);
 
-#define PRIdS __PRIS_PREFIX "d"
-#define PRIxS __PRIS_PREFIX "x"
-#define PRIuS __PRIS_PREFIX "u"
-#define PRIXS __PRIS_PREFIX "X"
-#define PRIoS __PRIS_PREFIX "o"
+// #define PRIdS __PRIS_PREFIX "d"
+// #define PRIxS __PRIS_PREFIX "x"
+// #define PRIuS __PRIS_PREFIX "u"
+// #define PRIXS __PRIS_PREFIX "X"
+// #define PRIoS __PRIS_PREFIX "o"
 
 class Graph{
  public:
@@ -237,11 +240,15 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     if(!sam.ReadHeader(samHeader)) {
       error("Read BAM file header %s failed!\n", bamFiles[i].c_str());
     }
+
+#if 0
+    // skip reading BAM file index
     if (!sam.ReadBamIndex()){
       fprintf(stderr, "Read BAM file index failed");
     } else {
       fprintf(stderr, "Read BAM file index OK");
     }
+#endif
     // // dump reference info
     // const SamReferenceInfo* info = samHeader.getReferenceInfo();
     // int nRef = info->getNumEntries();
@@ -351,7 +358,8 @@ void BamQC::LoaddbSNP(String & dbSNPFile)
     genomeIndex_t snpGenomeIndex = 0;
     int chromosomeIndex = tokens[1].AsInteger();
 
-    snpGenomeIndex = referencegenome.getGenomePosition(tokens[0].c_str(), chromosomeIndex);
+    snpGenomeIndex = referencegenome.getGenomePosition(tokens[0].c_str(),
+                                                       chromosomeIndex);
 
     if(snpGenomeIndex >= dbSNPIndicator.size() )
     {
