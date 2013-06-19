@@ -14,6 +14,25 @@ bool fileExists(const char* path) {
   }
 }
 
+void stripSuffix(const char* suffix, String* fn) {
+  int len = strlen(suffix);
+  String& s = *fn;
+  if (len > s.Length()) { // suffix is longer
+    return;
+  }
+  bool match = true;
+  for (int i = 0; i < len; ++i) {
+    if (suffix[i] == s[s.Length() - len + i]) {
+      match = false;
+      break;
+    }
+  }
+  if (match) {
+    s = s.SetLength(s.Length() - len);
+  }
+  return;
+}
+
 int main(int argc, char *argv[])
 {
   bool unpaired = false;
@@ -102,7 +121,7 @@ int main(int argc, char *argv[])
   pl.Status();
 
   if(bamFiles.Length()==0)
-    error("No SAM/BAM files provided!\n");
+    fprintf(stderr, "No SAM/BAM files provided!\n");
   
   if(reference.Length()==0)
     error("Reference not provided!\n");
@@ -140,6 +159,9 @@ int main(int argc, char *argv[])
     error("Need to specify --regions whenusing --invertRegion");
   }
 
+  if(bamFiles.Length()==0)
+    error("No SAM/BAM files provided!\n");
+  
   fprintf(stderr, "The following files are to be processed...\n\n");
   for(int i=0; i<bamFiles.Length();i++)
     fprintf(stderr, "%s\n", bamFiles[i].c_str());
@@ -217,7 +239,15 @@ int main(int argc, char *argv[])
   qc.OutputStats(statsFile);
 
   if(RcodeFile.Length()>0){
-    qc.Plot(plotFile, RCODE);
+    if (plotFile.Length() > 0 ) {
+      qc.Plot(plotFile, RCODE);
+    } else {
+      // make a default pdf file
+      String defaultPlotFile = RcodeFile;
+      stripSuffix(".R", &defaultPlotFile);
+      defaultPlotFile += ".pdf";
+      qc.Plot(defaultPlotFile, RCODE);
+    }
   }
 
   if(plotFile.Length()>0)
