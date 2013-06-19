@@ -3,7 +3,7 @@ EXE=qplot
 ########################
 # The Files:
 TOOLBASE = GCContent  QSamFlag Sequence BamQC QCStats MmapFile DepthCounter
-SRCONLY=main.cpp
+SRCONLY=Main.cpp
 HDRONLY=FlagDef.h
 
 ## Not need to use this to compile on Mac

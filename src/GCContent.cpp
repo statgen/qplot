@@ -232,7 +232,7 @@ void GCContent::OutputGCContent(String & reference, int windowSize, String &gcCo
       printf("Calculate GC file for specified region ( %u bp ); ",
              (unsigned int) regionIndicator.size());
     }
-    printf("Reference genome has %u bp\n", genome.sequenceLength());
+    printf("reference genome has %u bp\n", genome.sequenceLength());
 
     FILE * fh = fopen(gcContentFile.c_str(), "wb");
 
@@ -288,7 +288,8 @@ void GCContent::OutputGCContent(String & reference, int windowSize, String &gcCo
 
     fwrite(&gcContentDist, 1, sizeof(gcContentDist), fh);
 
-    for(int i=0; i<101; i++) printf("%u\n", gcContentDist[i]);
+    printf("GCPercentage\tFrequency\n");
+    for(int i=0; i<101; i++) printf("%d\t%u\n", i, gcContentDist[i]);
 
     fclose(fh);
 }
