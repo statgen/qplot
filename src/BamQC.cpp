@@ -263,16 +263,11 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     //           sam.getNumUnMappedReadsFromIndex(i));              
     // }
     // // dump read counts
-    
-    
-    QSamFlag flag;
-
-    uint64_t nRecords = 0;
-
-    //
-    // XXX This loop is processing all records, regardless
-    // of whether they are mapped or not - is this the intention?
-    //
+#if 0
+    /**
+     * This piece of code is a proof of concept that QPLOT can be speed up by
+     * processing regions of the whole BAM files
+     */
     for (int c = 1; c <= 22; ++c ){
       char chrom[10];
       fprintf(stderr, "Check chromosome %d\n", c);
@@ -290,6 +285,24 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
         // XXX this call winds up processing unmapped records and prints error messsages:
         stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
         if(stats[i].size>size) size = stats[i].size;
+        if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
+      }
+    }
+#endif
+    
+    QSamFlag flag;
+
+    uint64_t nRecords = 0;
+    // This loop is processing all records, regardless
+    // no matter they are mapped or not
+    for (int c = 1; c <= 22; ++c ){
+      while(sam.ReadRecord(samHeader, samRecord))
+      {
+        //stats[i].PrintSamRecord(sam);
+        flag.GetFlagFields(samRecord.getFlag());
+        // XXX this call winds up processing unmapped records and prints error messsages:
+        stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
+        if(stats[i].size > size) size = stats[i].size;
         if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
       }
     }
