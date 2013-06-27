@@ -240,13 +240,12 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     if(!sam.ReadHeader(samHeader)) {
       error("Read BAM file header %s failed!\n", bamFiles[i].c_str());
     }
-    if(!sam.ReadBamIndex()) {
-      error("Read BAM file index %s failed!\n", bamFiles[i].c_str());
-    }
-
 
 #if 0
     // skip reading BAM file index
+    if(!sam.ReadBamIndex()) {
+      error("Read BAM file index %s failed!\n", bamFiles[i].c_str());
+    }
     if (!sam.ReadBamIndex()){
       fprintf(stderr, "Read BAM file index failed");
     } else {
