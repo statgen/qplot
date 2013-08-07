@@ -211,7 +211,7 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
 
   for(int i=0; i<bamFiles.Length(); i++)
   {
-    fprintf(stderr, "Processing bam/sam file %s...\n", bamFiles[i].c_str());
+    fprintf(stderr, "Processing BAM/SAM file %s...\n", bamFiles[i].c_str());
 
     // if(page > 1 && !noDepth)
     //     depthVec.SetZeroCount();
@@ -259,7 +259,7 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     //   fprintf(stderr, "ref = %s,length = %d\n", info->getReferenceName(i), info->getReferenceLength(i));
     //   fprintf(stderr, "mapped = %d, unmapped = %d",
     //           sam.getNumMappedReadsFromIndex(i),
-    //           sam.getNumUnMappedReadsFromIndex(i));              
+    //           sam.getNumUnMappedReadsFromIndex(i));
     // }
     // // dump read counts
 #if 0
@@ -288,15 +288,13 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
       }
     }
 #endif
-    
     QSamFlag flag;
 
     uint64_t nRecords = 0;
     // This loop is processing all records, regardless
     // no matter they are mapped or not
-    for (int c = 1; c <= 22; ++c ){
-      while(sam.ReadRecord(samHeader, samRecord))
-      {
+    if (sampledRegion.empty()) {
+      while(sam.ReadRecord(samHeader, samRecord)) {
         //stats[i].PrintSamRecord(sam);
         flag.GetFlagFields(samRecord.getFlag());
         // XXX this call winds up processing unmapped records and prints error messsages:
@@ -304,10 +302,39 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
         if(stats[i].size > size) size = stats[i].size;
         if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
       }
+    } else {
+      // check bam index file
+      if(!sam.ReadBamIndex()) {
+        error("Read BAM file index %s failed, use 'samtools index' to create one, it is needed for downsampling speedup!\n", bamFiles[i].c_str());
+      }
+
+      // process each region
+      for (size_t j = 0; j != sampledRegion.size(); ++j) {
+        sam.SetReadSection(sampledRegion.getChrom(j),
+                           sampledRegion.getBegin(j),
+                           sampledRegion.getEnd(j));
+        // fprintf(stderr, "Processing %s:%d-%d\n",
+        //         sampledRegion.getChrom(j),
+        //         sampledRegion.getBegin(j),
+        //         sampledRegion.getEnd(j));
+        while(sam.ReadRecord(samHeader, samRecord)) {
+          // stats[i].PrintSamRecord(samRecord);
+          flag.GetFlagFields(samRecord.getFlag());
+          // XXX this call winds up processing unmapped records and prints error messsages:
+          stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
+          if(stats[i].size>size) size = stats[i].size;
+          if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
+        }
+      }
     }
+
+
     stats[i].ReportWarningCount();
     stats[i].CalcMisMatchRateByCycle();
     stats[i].CalcMisMatchRateByQual();
+    if (refBaseNCount <= 0) {
+      CalcNBaseCount();
+    }
     stats[i].CalcGenomeCoverage(genomePosCovered, refBaseNCount);
     stats[i].CalcQ20Bases();
     stats[i].CalcQ20BasesByCycle();
@@ -354,7 +381,6 @@ void BamQC::LoadGenomeSequence(String & reference)
   if(referencegenome.open())
     error("Open  reference failed...!\n");
 
-  CalcNBaseCount();
   fprintf(stderr, "DONE! Total sequence length %u\n", referencegenome.sequenceLength());
 }
 
@@ -403,9 +429,15 @@ void BamQC::LoaddbSNP(String & dbSNPFile)
   fprintf(stderr, "DONE!\n");
 }
 
-void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
+void BamQC::LoadRegions(String & regionsFile, bool invertRegion, double fraction)
 {
-  if(regionsFile.Length()==0) return;
+  // sub sample region if necessary.
+  if(regionsFile.Length() == 0) {
+    sampledRegion.sampleGenome(referencegenome, fraction);
+    return;
+  }
+
+  sampledRegion.sampleRegion(referencegenome, regionsFile, invertRegion, fraction);
 
   IFILE fhRegions;
   fhRegions = ifopen(regionsFile.c_str(),"r");
@@ -424,7 +456,7 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
   int numError = 0;
   const int MAX_ERROR = 20;
   StringIntHash wrongChromosomeCount;
-  
+
   while (!ifeof(fhRegions)){
     tokens.Clear();
     buffer.Clear();
@@ -439,11 +471,11 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
         fprintf(stderr, "Too many errors in your region file, now quitting....\n");
         exit(1);
       }
-      continue;      
+      continue;
     }
 
     genomeIndex_t startGenomeIndex = 0;
-    
+
     long chromosomeBeginIndex;
     long chromosomeEndIndex;
     if (!tokens[1].AsInteger(chromosomeBeginIndex) || !tokens[2].AsInteger(chromosomeEndIndex)) {
@@ -454,8 +486,8 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
         exit(1);
       }
       continue;
-    }        
-    
+    }
+
     startGenomeIndex = referencegenome.getGenomePosition(tokens[0].c_str(), chromosomeBeginIndex);
     if (startGenomeIndex == INVALID_GENOME_INDEX) {
       numError ++;
@@ -464,7 +496,7 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
       wrongChromosomeCount.IncrementCount(tokens[0]);
       continue;
     }
-        
+
     if(startGenomeIndex >= regionIndicator.size() ) {
       // fprintf(stderr, "WARNING: region list section %s position %u is not found in the reference and skipped...\n", tokens[0].c_str(), chromosomeIndex);
       continue;
@@ -483,8 +515,8 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
       fprintf(stderr, "WARNING: BAM file contains [ %d ] reads in chromosome [ %s ], but reference genome does not have this chromosome. Skipped.\n",
               wrongChromosomeCount.Integer(i), wrongChromosomeCount[i].c_str());
     }
-  } 
-  
+  }
+
   uint64_t sites = 0;
   if (invertRegion) {
     fprintf(stderr, " invert region...");

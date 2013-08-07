@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
   bool createGCContentFile = false; // not create GC file on the fly.
   String regions;
   bool invertRegion = false; // by default, not invert regionIndicator
+  double fraction  = -1;
   String gcContentFile_create;
   int windowSize = 100;
 
@@ -87,6 +88,7 @@ int main(int argc, char *argv[])
       LONG_PARAMETER_GROUP("Region list")
       LONG_STRINGPARAMETER("regions", &regions)
       EXCLUSIVE_PARAMETER("invertRegion", &invertRegion)
+      LONG_DOUBLEPARAMETER("fraction", &fraction)
       LONG_PARAMETER_GROUP("Flag filters")
       LONG_PARAMETER("read1_skip", &read1)
       LONG_PARAMETER("read2_skip", &read2)
@@ -129,7 +131,7 @@ int main(int argc, char *argv[])
 
   pl.Status();
 
-#define QPLOT_VERSION 20130619
+#define QPLOT_VERSION 20130806
   fprintf(stderr, "QPLOT (Ver: %d) started.\n", QPLOT_VERSION);
   fprintf(stderr, "QPLOT Documentation: http://genome.sph.umich.edu/wiki/QPLOT\n");
   fprintf(stderr, "\n");
@@ -256,7 +258,7 @@ int main(int argc, char *argv[])
   qc.SetLabel(label);
   qc.SetBamLabels(bamLabel);
   qc.LoadGenomeSequence(reference);
-  qc.LoadRegions(regions, invertRegion);
+  qc.LoadRegions(regions, invertRegion, fraction);
   qc.LoaddbSNP(dbSNPFile);
   qc.CalculateQCStats(filter, minMapQuality);
   qc.OutputStats(statsFile);

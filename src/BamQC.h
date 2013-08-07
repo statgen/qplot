@@ -9,6 +9,7 @@
 #include "StringArray.h"
 #include "GenomeSequence.h"
 #include "QCStats.h"
+#include "RegionSampler.h"
 
 #define MAXQ 50
 
@@ -35,7 +36,8 @@ class BamQC
   bool noDepth; // Indicator of whether to process depth dist
   bool noGC; // Indicator of whether to process GC content
   int page;
-
+  RegionSampler sampledRegion;
+  
  public:
   BamQC();
   BamQC(StringArray &);
@@ -49,7 +51,7 @@ class BamQC
   void SetBamLabels(String &lb) {bamLabel = lb; }
   void SetLanes2Process(String &);
   void SetReadGroup2Process(String &);
-  void LoadRegions(String &, bool invert); // if @param invert = true: we need to flip the regionIndicator; o/w, do nothing.
+  void LoadRegions(String &, bool invert, double fraction); // if @param invert = true: we need to flip the regionIndicator; o/w, do nothing.
   void LoadGenomeSequence(String & refGenomeFile);
   void LoaddbSNP(String & dbSNPFile);
   void CalcNBaseCount();
