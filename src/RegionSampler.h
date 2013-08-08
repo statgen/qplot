@@ -40,6 +40,7 @@ private:
   void dumpRegion();
 
   GenomeSequence* reference;
+
   // these are sampled regions
   std::vector<std::string> chrom;
   std::vector<int> begin;

@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <set>
 
+#undef DEBUG
+
 struct Region {
   Region(int chr, int beg, int end, int weight):
       chrom(chr), begin(beg), end(end), weight(weight) {};
@@ -15,7 +17,22 @@ struct Region {
   int weight;
 };
 
+int calcNBaseCount(GenomeSequence& ref, int chrom, int beg, int end) {
+  genomeIndex_t b = ref.getGenomePosition(chrom, beg);
+  genomeIndex_t e = ref.getGenomePosition(chrom, end);
+  int c = 0;
+  for (genomeIndex_t i = b; i <= e; ++i) {
+    if (ref[i] == 'N')
+      ++c;
+  }
+  return c;
+}
+int assignWeigth(GenomeSequence& ref, Region* r) {
+  r->weight = (r->end - r->begin + 1) - calcNBaseCount(ref, r->chrom, r->begin, r->end);
+  return 0;
+}
 
+    
 int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Region>* regions);
 void invertRegions(GenomeSequence& ref, std::vector<Region>* regions);
   
@@ -45,8 +62,9 @@ int RegionSampler::sampleGenome(GenomeSequence& ref, double fraction){
     int maxChunk = size / WHOLE_GENOME_CHUNK - 1;
     for (int j = 0; j < maxChunk ; ++j ){
       Region r(i, j * WHOLE_GENOME_CHUNK, (j+1) * WHOLE_GENOME_CHUNK, 1);
+      assignWeigth(ref, &r);
       regions.push_back(r);
-      totalWeight  += 1;
+      totalWeight  += r.weight;
     }
   }
   
@@ -54,8 +72,14 @@ int RegionSampler::sampleGenome(GenomeSequence& ref, double fraction){
   std::random_shuffle(regions.begin(), regions.end());
   
   // select first @param fraction of samples
-  long int cutoff = fraction * totalWeight;
-  regions.resize(cutoff);
+  long int cutoffWeight = fraction * totalWeight;
+  long int weight = 0;
+  int newSize = 0;
+  while (weight < cutoffWeight) {
+    weight += regions[newSize].weight;
+    newSize ++;
+  }
+  regions.resize(newSize);
 
   // sort and merge regions
   std::sort(regions.begin(), regions.end(), compareRegion);
@@ -172,12 +196,14 @@ void RegionSampler::mergeRegion(const Region& r, int threshold) {
 }
 
 void RegionSampler::dumpRegion() {
+#ifndef DEBUG
   fprintf(stdout, "Dump region:\n");
   size_t n = this->chrom.size();
   for (size_t i = 0; i != n; ++i) {
     const char* chr = this->chrom[i].c_str();
     fprintf(stdout, "Region %zu\t %s:%d-%d\n", i, chr, this->begin[i], this->end[i]);
   }
+#endif
 }
 
 int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Region>* regions) {  
@@ -234,6 +260,7 @@ int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Regi
     int chrom = reference.getChromosome(tokens[0].c_str());
     int weight = chromosomeEndIndex - chromosomeBeginIndex;
     Region r(chrom, (int)chromosomeBeginIndex, (int)chromosomeEndIndex, weight);
+    assignWeigth(reference, &r);
     regions->push_back(r);
     
     tokens.Clear();
@@ -263,21 +290,25 @@ void invertRegions(GenomeSequence& ref, std::vector<Region>* regions) {
       if (lastChrom != -1) {
         int totalChromLen = ref.getChromosomeSize(lastChrom);
         Region r (lastChrom, lastEnd, totalChromLen, totalChromLen - lastEnd);
+        assignWeigth(ref, &r);
         out.push_back(r);
       }
       Region r (in[i].chrom, 0, in[i].begin, in[i].begin);
+      assignWeigth(ref, &r);
       out.push_back(r);
       lastChrom = in[i].chrom;
       lastEnd = in[i].end;
       continue;
     }
     Region r (in[i].chrom, lastEnd, in[i].begin, in[i].begin - lastEnd);
+    assignWeigth(ref, &r);
     out.push_back(r);
     lastEnd = in[i].end;
   }
   if (lastChrom != -1) {
     int totalChromLen = ref.getChromosomeSize(lastChrom);
     Region r (lastChrom, lastEnd, totalChromLen, totalChromLen - lastEnd);
+    assignWeigth(ref, &r);
     out.push_back(r);
   }
   
@@ -293,6 +324,7 @@ void invertRegions(GenomeSequence& ref, std::vector<Region>* regions) {
                j * RegionSampler::WHOLE_GENOME_CHUNK,
                (j+1) * RegionSampler::WHOLE_GENOME_CHUNK,
                RegionSampler::WHOLE_GENOME_CHUNK);
+      assignWeigth(ref, &r);
       out.push_back(r);
     }
   }

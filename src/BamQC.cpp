@@ -242,54 +242,18 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     }
 
 #if 0
-    // skip reading BAM file index
-    if(!sam.ReadBamIndex()) {
-      error("Read BAM file index %s failed!\n", bamFiles[i].c_str());
+    // dump reference info
+    const SamReferenceInfo* info = samHeader.getReferenceInfo();
+    int nRef = info->getNumEntries();
+    for (int i = 0; i < nRef; ++i) {
+      fprintf(stderr, "ref = %s,length = %d\n", info->getReferenceName(i), info->getReferenceLength(i));
+      fprintf(stderr, "mapped = %d, unmapped = %d",
+              sam.getNumMappedReadsFromIndex(i),
+              sam.getNumUnMappedReadsFromIndex(i));
     }
-    if (!sam.ReadBamIndex()){
-      fprintf(stderr, "Read BAM file index failed");
-    } else {
-      fprintf(stderr, "Read BAM file index OK");
-    }
-#endif
-    // // dump reference info
-    // const SamReferenceInfo* info = samHeader.getReferenceInfo();
-    // int nRef = info->getNumEntries();
-    // for (int i = 0; i < nRef; ++i) {
-    //   fprintf(stderr, "ref = %s,length = %d\n", info->getReferenceName(i), info->getReferenceLength(i));
-    //   fprintf(stderr, "mapped = %d, unmapped = %d",
-    //           sam.getNumMappedReadsFromIndex(i),
-    //           sam.getNumUnMappedReadsFromIndex(i));
-    // }
-    // // dump read counts
-#if 0
-    /**
-     * This piece of code is a proof of concept that QPLOT can be speed up by
-     * processing regions of the whole BAM files
-     */
-    for (int c = 1; c <= 22; ++c ){
-      char chrom[10];
-      fprintf(stderr, "Check chromosome %d\n", c);
-      sprintf(chrom, "%d", c);
-      sam.SetReadSection(chrom, 5000000, 10000000);
-      while(sam.ReadRecord(samHeader, samRecord))
-      {
-        // fprintf(stdout, "Out use 5M - 10M region");
-        // int32_t pos = samRecord.get1BasedPosition();
-        // if (pos < 5000000 || pos > 10000000) {
-        //   continue;
-        // }
-        //stats[i].PrintSamRecord(sam);
-        flag.GetFlagFields(samRecord.getFlag());
-        // XXX this call winds up processing unmapped records and prints error messsages:
-        stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
-        if(stats[i].size>size) size = stats[i].size;
-        if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
-      }
-    }
-#endif
-    QSamFlag flag;
+#endif    
 
+    QSamFlag flag;
     uint64_t nRecords = 0;
     // This loop is processing all records, regardless
     // no matter they are mapped or not
@@ -313,10 +277,10 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
         sam.SetReadSection(sampledRegion.getChrom(j),
                            sampledRegion.getBegin(j),
                            sampledRegion.getEnd(j));
-        // fprintf(stderr, "Processing %s:%d-%d\n",
-        //         sampledRegion.getChrom(j),
-        //         sampledRegion.getBegin(j),
-        //         sampledRegion.getEnd(j));
+        fprintf(stderr, "Processing %s:%d-%d\n",
+                sampledRegion.getChrom(j),
+                sampledRegion.getBegin(j),
+                sampledRegion.getEnd(j));
         while(sam.ReadRecord(samHeader, samRecord)) {
           // stats[i].PrintSamRecord(samRecord);
           flag.GetFlagFields(samRecord.getFlag());
