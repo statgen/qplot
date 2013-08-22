@@ -10,6 +10,8 @@
 #define MIN_MAPQ 10
 #define SIZE_RESERVED 10000
 
+const int QCStats::depthThreshold[6] = {1, 5, 10, 15, 25, 30};
+
 void QCStats::constructorClear()
 {
   for(int i=0;i< 100; i++) {
@@ -41,6 +43,7 @@ QCStats::QCStats(int n)
   if(n<=0) error("Constructor argument has to be >0!\n");
   GC=NULL;
   depthVec=NULL;
+
   Init(n);
 }
 
@@ -342,17 +345,27 @@ void QCStats::CalcDepthGC(GCContent &gc, std::vector<bool> &genomePosCovered)
 
 void QCStats::CalcDepthDist()
 {
+  // reset depth distribution counter
+  int nThreshold = sizeof(depthThreshold)/sizeof(depthThreshold[0]);
+  for(int i = 0; i < nThreshold; ++i) {
+    depthDistribution[i] = 0;
+  }
+  
   const std::vector<uint32_t>& freq = depthVec->getFreqDist();
   for (unsigned int i = 1; i < freq.size(); i++){
     depthDist[i] = freq[i];
     // fprintf(stderr, "depth %u count = %u\n", i, freq[i]);
+
+    for(int j = 0; j < nThreshold; ++j) {
+      if (i >= (unsigned int)depthThreshold[j]) {
+        depthDistribution[j] += freq[i];
+      }
+    }
   }
-  // old code:
-  //
-  // depthDist.clear();
-  // for(uint32_t i=0; i<(*depthVec).length; i++)
-  //   if((*depthVec).depth[i]>0)
-  //     depthDist[(*depthVec).depth[i]]++;
+
+  // for(int i = 0; i < nThreshold; ++i) {
+  //   fprintf(stderr, "depth > %d sites: %d\n", depthThreshold[i], depthDistribution[i]);
+  // }
 }
 
 //Should be called after CalcDepthGC and CalcDepthDist to get relative info

@@ -18,6 +18,7 @@
 
 using namespace std;
 
+
 class QCStats
 {
   void constructorClear();
@@ -32,7 +33,9 @@ class QCStats
   uint64_t depthTotalVsGC[101];
   double   depthVsGC[101];
   double   depthVsGC_norm[101];
-  
+  static const int depthThreshold[6];
+  uint32_t depthDistribution[6]; // count >=1, >=5, ... sites
+      
   std::map<int, uint64_t> matchCountByQual;
   std::map<int, uint64_t> misMatchCountByQual;
   std::map<int, double> misMatchRateByQual;

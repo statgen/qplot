@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 
   pl.Status();
 
-#define QPLOT_VERSION 20130806
+#define QPLOT_VERSION 20130821
   fprintf(stderr, "QPLOT (Ver: %d) started.\n", QPLOT_VERSION);
   fprintf(stderr, "QPLOT Documentation: http://genome.sph.umich.edu/wiki/QPLOT\n");
   fprintf(stderr, "\n");

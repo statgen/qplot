@@ -13,6 +13,10 @@
 
 #define MAXQ 50
 
+/**
+ * BamQC contain common configuration
+ * and it delegate class QCStats for each each .SAM/.BAM file.
+ */
 class BamQC
 {
  public:
@@ -26,6 +30,7 @@ class BamQC
   int size;
   std::vector<bool> dbSNPIndicator;
   std::vector<bool> regionIndicator;
+  uint64_t totalSites;
   std::vector<bool> genomePosCovered;
   GenomeSequence referencegenome;
   uint32_t refBaseNCount;

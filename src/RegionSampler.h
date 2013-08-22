@@ -12,7 +12,7 @@ class RegionSampler {
 public:
   // caller function
   int sampleGenome(GenomeSequence& ref, double fraction);
-  int sampleRegion(GenomeSequence& ref, String& regionFile, bool invertRegion, double fraction);
+  int sampleWithRegion(GenomeSequence& ref, String& regionFile, bool invertRegion, double fraction);
 
   // getters
   bool empty() { return this->chrom.empty();};

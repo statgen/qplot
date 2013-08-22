@@ -6,6 +6,7 @@
 #include <set>
 
 #undef DEBUG
+#define DEBUG
 
 struct Region {
   Region(int chr, int beg, int end, int weight):
@@ -32,16 +33,17 @@ int assignWeigth(GenomeSequence& ref, Region* r) {
   return 0;
 }
 
-    
+void sampleRegions(std::vector<Region>* in, double fraction);
+void mergeRegions(std::vector<Region>* regions);
 int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Region>* regions);
-void invertRegions(GenomeSequence& ref, std::vector<Region>* regions);
-  
+void invertRegions(GenomeSequence& ref, const std::vector<Region>& in, std::vector<Region>* invertRegion);
+
 /**
  * @return true if @param is less than @param r
  */
 bool compareRegion(const Region& l, const Region& r) {
   if (l.chrom < r.chrom) return true;
-  if (l.chrom > r.chrom) return false;  
+  if (l.chrom > r.chrom) return false;
   if (l.begin < r.begin) return true;
   if (l.begin > r.begin) return false;
   if (l.end < r.end) return true;
@@ -56,7 +58,7 @@ int RegionSampler::sampleGenome(GenomeSequence& ref, double fraction){
   if (fraction < 0 ) return 0; // don't need to use fraction
   const int numRef = ref.getChromosomeCount();
   std::vector<Region> regions;
-  long int totalWeight = 0;
+
   for (int i = 0; i < numRef; ++i) {
     int size = ref.getChromosomeSize(i);
     int maxChunk = size / WHOLE_GENOME_CHUNK - 1;
@@ -64,25 +66,10 @@ int RegionSampler::sampleGenome(GenomeSequence& ref, double fraction){
       Region r(i, j * WHOLE_GENOME_CHUNK, (j+1) * WHOLE_GENOME_CHUNK, 1);
       assignWeigth(ref, &r);
       regions.push_back(r);
-      totalWeight  += r.weight;
     }
   }
-  
-  // shuffle
-  std::random_shuffle(regions.begin(), regions.end());
-  
-  // select first @param fraction of samples
-  long int cutoffWeight = fraction * totalWeight;
-  long int weight = 0;
-  int newSize = 0;
-  while (weight < cutoffWeight) {
-    weight += regions[newSize].weight;
-    newSize ++;
-  }
-  regions.resize(newSize);
 
-  // sort and merge regions
-  std::sort(regions.begin(), regions.end(), compareRegion);
+  sampleRegions(&regions, fraction);
 
   int lastRegion = -1;
   for (size_t i = 0; i < regions.size(); ++i) {
@@ -104,41 +91,60 @@ int RegionSampler::sampleGenome(GenomeSequence& ref, double fraction){
   return 0;
 }
 
-int RegionSampler::sampleRegion(GenomeSequence& ref, String& regionFile,
-                                bool invertRegion, double fraction){
+/**
+ * When target regions are of interests, we will make sampled regions
+ * for on-target regions and off-target regions with given sampling @param fraction
+ */
+int RegionSampler::sampleWithRegion(GenomeSequence& ref, String& regionFile,
+                                    bool invertRegion, double fraction){
   // split whole genomes into chunks
-  fprintf(stderr, "Sampling region file %lf\n", fraction);
+
   this->reference = &ref;
-  if (fraction < 0 ) return 0; // don't need to use fraction
+  if (fraction < 0 ) {
+    fprintf(stderr, "Disabling sampling methods\n");
+    return 0; // don't need to use fraction
+  } else {
+    fprintf(stderr, "Sampling region file %lf\n", fraction);
+  }
 
   std::vector<Region> regions;
+  std::vector<Region> invertedRegions;
   loadRegions(regionFile, *this->reference, &regions);
   printf("Loaded %zu regions\n", regions.size());
-  if (invertRegion) {
-    printf("Inverting regions\n");
-    invertRegions(ref, &regions);
-  }
-  
-  long int totalWeight = 0;
-  for (size_t i = 0; i < regions.size(); ++i) {
-    totalWeight += regions[i].weight;
-  }
-  
-  // shuffle
-  std::random_shuffle(regions.begin(), regions.end());
-  
-  // select first @param fraction of samples
-  long int cutoffWeight = std::min(fraction, 1.0) * totalWeight;
-  long int weight = 0;
-  int newSize = 0;
-  while (weight < cutoffWeight) {
-    weight += regions[newSize].weight;
-    newSize ++;
-  }
-  regions.resize(newSize);
+  // if (invertRegion) {
+  // printf("Inverting regions\n");
+  invertRegions(ref, regions, &invertedRegions);
+  // }
 
-  // sort and merge regions
+  sampleRegions(&regions, fraction);
+  sampleRegions(&invertedRegions, fraction);
+  for (size_t i = 0; i < invertedRegions.size(); ++i) {
+    regions.push_back(invertedRegions[i]);
+  }
+  mergeRegions(&regions);
   std::sort(regions.begin(), regions.end(), compareRegion);
+  
+  // long int totalWeight = 0;
+  // for (size_t i = 0; i < regions.size(); ++i) {
+  //   totalWeight += regions[i].weight;
+  // }
+
+  // // shuffle
+  // std::random_shuffle(regions.begin(), regions.end());
+
+  // // select first @param fraction of samples
+  // long int cutoffWeight = std::min(fraction, 1.0) * totalWeight;
+  // long int weight = 0;
+  // int newSize = 0;
+  // while (weight < cutoffWeight) {
+  //   weight += regions[newSize].weight;
+  //   newSize ++;
+  // }
+  // regions.resize(newSize);
+
+  // // sort and merge regions
+  // std::sort(regions.begin(), regions.end(), compareRegion);
+
 
   int lastRegion = -1;
   for (size_t i = 0; i < regions.size(); ++i) {
@@ -206,23 +212,28 @@ void RegionSampler::dumpRegion() {
 #endif
 }
 
-int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Region>* regions) {  
+/**
+ * Load region file and store them in @param regions
+ * a) if the regions not in reference, then discard it.
+ * b) if regions are overlapping, they will be merged
+ */
+int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Region>* regions) {
   IFILE fhRegions = ifopen(regionsFile.c_str(),"r");
   if(fhRegions==NULL) {
     fprintf(stderr, "Cannot open regions file %s failed!\n", regionsFile.c_str());
     return -1;
   }
-  
+
   StringArray tokens;
   String buffer;
-  
+
   fprintf(stderr, "Loading region list...");
 
   // record errors
   // int numError = 0;
   // const int MAX_ERROR = 20;
   // StringIntHash wrongChromosomeCount;
-  
+
   while (!ifeof(fhRegions)){
     tokens.Clear();
     buffer.Clear();
@@ -231,11 +242,11 @@ int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Regi
 
     tokens.AddTokens(buffer, WHITESPACE);
     if(tokens.Length() < 3) {
-      continue;      
+      continue;
     }
 
     genomeIndex_t startGenomeIndex = 0;
-    
+
     long chromosomeBeginIndex;
     long chromosomeEndIndex;
     if (!tokens[1].AsInteger(chromosomeBeginIndex) || !tokens[2].AsInteger(chromosomeEndIndex)) {
@@ -246,8 +257,8 @@ int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Regi
       //   exit(1);
       // }
       continue;
-    }        
-    
+    }
+
     startGenomeIndex = reference.getGenomePosition(tokens[0].c_str(), chromosomeBeginIndex);
     if (startGenomeIndex == INVALID_GENOME_INDEX) {
       // numError ++;
@@ -260,13 +271,15 @@ int loadRegions(String& regionsFile, GenomeSequence& reference, std::vector<Regi
     int chrom = reference.getChromosome(tokens[0].c_str());
     int weight = chromosomeEndIndex - chromosomeBeginIndex;
     Region r(chrom, (int)chromosomeBeginIndex, (int)chromosomeEndIndex, weight);
-    assignWeigth(reference, &r);
     regions->push_back(r);
-    
     tokens.Clear();
     buffer.Clear();
   }
-  
+
+  mergeRegions(regions);
+  for(size_t i = 0; i < regions->size(); ++i){
+    assignWeigth(reference, &(*regions)[i]);
+  }
   return 0;
 }
 
@@ -274,9 +287,8 @@ bool isSmallRegion(Region& r) {
   return (r.end - r.begin < RegionSampler::REGION_OVERLAP_THRESHOLD);
 }
 
-void invertRegions(GenomeSequence& ref, std::vector<Region>* regions) {
-  std::vector<Region>& in = *regions;
-  std::vector<Region>  out;
+void invertRegions(GenomeSequence& ref, const std::vector<Region>& in, std::vector<Region>* invertRegion) {
+  std::vector<Region>&  out = *invertRegion;
   if (in.empty()) return;
 
   std::set<int> chromInRegion;
@@ -311,7 +323,7 @@ void invertRegions(GenomeSequence& ref, std::vector<Region>* regions) {
     assignWeigth(ref, &r);
     out.push_back(r);
   }
-  
+
   // add chromosomes that are not in the region list
   // similar to sampleGenome, we use WHOLE_GENOME_CHUNK chunk
   const int numRef = ref.getChromosomeCount();
@@ -333,7 +345,59 @@ void invertRegions(GenomeSequence& ref, std::vector<Region>* regions) {
   // b/c before inverting, these regions should be merged before hand
   size_t newSize = std::remove_if(out.begin(), out.end(), isSmallRegion) - out.begin();
   out.resize(newSize);
+}
 
-  // pass results out
-  std::swap(in, out);
+void mergeRegions(std::vector<Region>* regions) {
+  std::vector<Region>& r = *regions;
+  std::vector<Region> out;
+  std::sort(r.begin(), r.end(), compareRegion);
+
+  int lastChrom = -1;
+  size_t n = r.size();
+  int idx = -1;
+  for (size_t i = 0; i != n; ++i) {
+    if (lastChrom != r[i].chrom) { // new chrom
+      lastChrom = r[i].chrom;
+      out.push_back(r[i]);
+      idx ++;
+      continue;
+    }
+    if (out[idx].end < r[i].begin) {
+      out.push_back(r[i]);
+      ++idx;
+      continue;
+    } else {
+      out[idx].end = std::max(out[idx].end, r[i].end);
+    }
+  }
+  std::swap(*regions, out);
+}
+
+
+void sampleRegions(std::vector<Region>* in, double fraction) {
+  if (fraction < 0.0) return;
+  if (fraction > 1.) fraction = 1.0;
+
+  std::vector<Region>& regions = *in;
+
+  long int totalWeight = 0;
+  size_t num = regions.size();
+  for (size_t i = 0; i < num; ++i)
+    totalWeight  += regions[i].weight;
+
+  // shuffle
+  std::random_shuffle(regions.begin(), regions.end());
+
+  // select first @param fraction of samples
+  long int cutoffWeight = fraction * totalWeight;
+  long int weight = 0;
+  int newSize = 0;
+  while (weight < cutoffWeight) {
+    weight += regions[newSize].weight;
+    newSize ++;
+  }
+  regions.resize(newSize);
+
+  // sort and merge regions
+  std::sort(regions.begin(), regions.end(), compareRegion);
 }
