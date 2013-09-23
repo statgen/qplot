@@ -71,6 +71,7 @@ class QCStats
   uint64_t nReadsMapped2TargetRegions;
   uint64_t nQ20;
   double   pQ20; //proportion of Q20 bases
+  uint64_t nSecondary;
   uint64_t nDup;
   uint64_t nQCFail;
   uint64_t nPaired;

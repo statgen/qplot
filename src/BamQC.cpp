@@ -597,6 +597,10 @@ void BamQC::OutputStats(String &statsFile)
   for(int i=0; i<bamFiles.Length(); i++)
     fprintf(OUT, "\t%d", stats[i].insertSize_medium);
 
+  fprintf(OUT, "\nSecondaryRate(%%)");
+  for(int i=0; i<bamFiles.Length(); i++)
+    fprintf(OUT, "\t%.2f", 100*double(stats[i].nSecondary)/stats[i].nReads);
+
   fprintf(OUT, "\nDupRate(%%)");
   for(int i=0; i<bamFiles.Length(); i++)
     fprintf(OUT, "\t%.2f", 100*double(stats[i].nDup)/stats[i].nReads);

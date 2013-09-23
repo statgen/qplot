@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
   bool read1 = false;
   bool read2 = false;
   bool paired = false;
+  bool keepSecondary = false;
   bool keepDup = false;
   bool keepQCFail = false;
   double minMapQuality = 0;
@@ -94,7 +95,8 @@ int main(int argc, char *argv[])
       LONG_PARAMETER("read2_skip", &read2)
       LONG_PARAMETER("paired_skip", &paired)
       LONG_PARAMETER("unpaired_skip", &unpaired)
-      LONG_PARAMETER_GROUP("Dup and QCFail")
+      LONG_PARAMETER_GROUP("Secondary, Dup, and QCFail")
+      LONG_PARAMETER("secondary_keep", &keepSecondary)
       LONG_PARAMETER("dup_keep", &keepDup)
       LONG_PARAMETER("qcfail_keep", &keepQCFail)
       LONG_PARAMETER_GROUP("Mapping filters")
@@ -239,6 +241,7 @@ int main(int argc, char *argv[])
   filter.SetRead2(read2);
   filter.SetPaired(paired);
   filter.SetUnPaired(unpaired);
+  filter.SetSecondary(!keepSecondary);
   filter.SetDuplicate(!keepDup);
   filter.SetQCFail(!keepQCFail);
 

@@ -120,7 +120,7 @@ void QCStats::Init(int n)
     }
 
   //For general stats
-  nReads=nUnMapped=nUnMapped_Filter=nZeroMapQual=nLT10MapQual=nReadsMapped2TargetRegions=nQ20=nDup=nQCFail=nPaired=nProperPaired=0;
+  nReads=nUnMapped=nUnMapped_Filter=nZeroMapQual=nLT10MapQual=nReadsMapped2TargetRegions=nQ20=nSecondary=nDup=nQCFail=nPaired=nProperPaired=0;
   nBaseCovered  = 0;
   MAX_ISIZE_ALLOWED = INT_MAX; nWarnings = 0;
 }
@@ -522,10 +522,12 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     if(sam.getMapQuality()==0) nZeroMapQual++;
     if(sam.getMapQuality()<10) nLT10MapQual++;
   }
+  if(flag.isSecondary) { nSecondary++;  }
   if(flag.isDup) { nDup++;  }
   if(flag.isQCFail) { nQCFail++;  }
 
   if(flag.isUnMapped) { return; }
+  if(filter.isSecondary && flag.isSecondary) { return;  }
   if(filter.isDup && flag.isDup) { return;  }
   if(filter.isQCFail && flag.isQCFail) { return;  }
 
