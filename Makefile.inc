@@ -39,5 +39,5 @@ $(INCLUDE_MAKE):
 cloneLib:
 	@if test -d $(LIB_PATH_QPLOT); \
 	then echo $(LIB_PATH_QPLOT) already exists; \
-	else git clone git://github.com/statgen/libStatGen.git $(LIB_PATH_QPLOT); fi
+	else git clone https://github.com/statgen/libStatGen.git $(LIB_PATH_QPLOT); fi
 	@echo Call make to compile libStatGen and this tool.
