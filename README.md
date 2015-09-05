@@ -367,7 +367,7 @@ can invoke qplot using the following command line:
 Sample outputs are listed below:
 
 \1) Figure:
-[qplot.pdf](http://www.mywiki.com/wiki/Media:qplot.pdf "Media:qplot.pdf")
+[qplot.pdf](http://genome.sph.umich.edu/wiki/Media:qplot.pdf "Media:qplot.pdf")
 
 \2) Summary statistics:
 
@@ -410,7 +410,7 @@ With a customized script, we aggregated 24 bar-coded samples in the same
 graph. The graph will help compare sequencing quality between samples.
 
 [QPlot of 24
-samples(PDF)](http://www.mywiki.com/wiki/Media:_qplot.Pool.9847.pdf "Media: qplot.Pool.9847.pdf")
+samples(PDF)](http://genome.sph.umich.edu/wiki/Media:_qplot.Pool.9847.pdf "Media: qplot.Pool.9847.pdf")
 
 -   Interactive qplot
 
