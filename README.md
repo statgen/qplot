@@ -435,7 +435,7 @@ can help identify problems after obtaining sequencing data.
 -   Base quality distributed abnormally
 
 [Example of qplot helping to identify wrong phred base
-quality](http://www.mywiki.com/wiki/Media:_WrongBaseQual.pdf "Media: WrongBaseQual.pdf")
+quality]http://genome.sph.umich.edu//wiki/Media:_WrongBaseQual.pdf "Media: WrongBaseQual.pdf")
 
 By checking the first graph "Empirical vs reported Phred score", we
 found reported base qualities are shifted to the right. In this
@@ -446,7 +446,7 @@ SNP variants.
 -   Bar-coded samples
 
 [Example of qplot identifying the effect of ignoring
-bar-coding](http://www.mywiki.com/wiki/Media:_WrongBarCoding.pdf "Media: WrongBarCoding.pdf")
+bar-coding](http://genome.sph.umich.edu/wiki/Media:_WrongBarCoding.pdf "Media: WrongBarCoding.pdf")
 
 By checking "Empirical phred score by cycle" (top right graph on the
 first page), we noticed the empirical qualities in the first several
