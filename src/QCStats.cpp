@@ -633,7 +633,7 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
       depthTotalVsGC[GC->gcCount[refpos]]++;
 
     (*genomePosCovered)[refpos]=true;
-
+    if(refBase!='N') totalMappedBases++;
     // Excluding dbSNPs for mismatch rate calculation
     if((*dbSNP).size()>0 && (*dbSNP)[refpos]==true) continue;
 
@@ -653,7 +653,7 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
 
     // Maped based
     //if(refBase=='A' || refBase=='C' || refBase=='G' || refBase=='T') totalMappedBases++;
-    if(refBase!='N') totalMappedBases++;
+//    if(refBase!='N') totalMappedBases++;
     //
     // Base compostion
     //
