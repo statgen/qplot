@@ -8,7 +8,9 @@
 #include <set>
 
 #define MIN_MAPQ 10
-#define SIZE_RESERVED 10000
+#define SIZE_RESERVED 315
+
+const int QCStats::depthThreshold[7] = {1, 5, 10, 15, 20, 25, 30};
 
 void QCStats::constructorClear()
 {
@@ -66,14 +68,15 @@ QCStats::~QCStats()
 
 void QCStats::ReportWarningCount()
 {
-    if(nWarnings>0) fprintf(stderr, "Total number of warnings: %llu \n", nWarnings);
+    if(nWarnings>0) fprintf(stderr, "Total number of warnings: %lu \n", nWarnings);
 }
 
 void QCStats::Init(int n)
 {
     size=0;
     size_reserved = n;
-    totalMappedBases = 0;
+    totalMappedBases = 0;	// calculated but never used
+    regionMappedBases = 0;	// used at BamQC.cpp line 570
     matchCountByCycle = new uint64_t[size_reserved];
     misMatchCountByCycle = new uint64_t[size_reserved];
     misMatchRateByCycle = new double[size_reserved];
@@ -117,8 +120,8 @@ void QCStats::Init(int n)
         }
 
     //For general stats
-    nReads=nUnMapped=nUnMapped_Filter=nZeroMapQual=nLT10MapQual=nReadsMapped2TargetRegions=nQ20=nDup=nQCFail=nPaired=nProperPaired=0;
-    nBaseCovered  = 0;
+    nReads = nUnMapped = nUnMapped_Filter = nZeroMapQual = nLT10MapQual = nQ20 = 0;
+    nReadsMapped2TargetRegions = nSecondary = nDup = nQCFail = nPaired = nProperPaired = 0;
     MAX_ISIZE_ALLOWED = INT_MAX; nWarnings = 0;
 }
 
@@ -167,16 +170,21 @@ void QCStats::ReAllocateMemory(int size_new)
     size_reserved = size_new;
 }
 
-void QCStats::CalcGenomeCoverage(std::vector<bool> &position, uint32_t baseNCount)
+void QCStats::CalcGenomeCoverage(uint64_t regionLength)
 {
-    nBaseCovered = 0;
-    for(uint32_t i=0; i<position.size(); i++)
-        if(position[i])
+    uint64_t nBaseCovered = 0;
+    for(uint32_t i=0; i < (*genomePosCovered).size(); i++)
+        if ((*genomePosCovered)[i])
             nBaseCovered++;
 
-    coverage = double(totalMappedBases)/nBaseCovered;
-    //coverage = double(totalMappedBases)/(position.size()-baseNCount);
-    genomeCoverage = 100*double(nBaseCovered)/(position.size()-baseNCount);
+    coverage = double(regionMappedBases) / nBaseCovered;
+    genomeCoverage = 100*double(nBaseCovered) / regionLength;
+
+    //  This function used to have vector  genomePosCovered[]  passed into it 
+    //  as argument "position", in addition to variable baseNCount from BamQC.
+
+    //  coverage = double(totalMappedBases)/(position.size()-baseNCount);
+    //  genomeCoverage = 100*double(nBaseCovered)/(position.size()-baseNCount);
 }
 
 void QCStats::CalcMisMatchRateByCycle()
@@ -332,7 +340,7 @@ void QCStats::CalcDepthGC(GCContent &gc, std::vector<bool> &genomePosCovered)
     for(uint32_t i=0; i<genomePosCovered.size(); i++)
         if(genomePosCovered[i])
             coveredGCFreq[gc.gcCount[i]]++;
-
+	 	 	 	 	 	 	//  must call  CalcGenomeCoverage()  before this
     for(int i=0; i<=100; i++)
         if(coveredGCFreq[i]>0){
             depthVsGC[i] = double(depthTotalVsGC[i])/coveredGCFreq[i];
@@ -342,20 +350,31 @@ void QCStats::CalcDepthGC(GCContent &gc, std::vector<bool> &genomePosCovered)
 
 void QCStats::CalcDepthDist()
 {
-    const std::vector<uint32_t>& freq = depthVec->getFreqDist();
-    for (unsigned int i = 1; i < freq.size(); i++){
-        depthDist[i] = freq[i];
-        // fprintf(stderr, "depth %u count = %u\n", i, freq[i]);
+  // reset depth distribution counter
+  int nThreshold = sizeof(depthThreshold)/sizeof(depthThreshold[0]);
+  for(int i = 0; i < nThreshold; ++i) {
+    depthDistribution[i] = 0;
+  }
+  
+  const std::vector<uint32_t>& freq = depthVec->getFreqDist();
+  for (unsigned int i = 1; i < freq.size(); i++){
+    depthDist[i] = freq[i];
+    // fprintf(stderr, "depth %u count = %u\n", i, freq[i]);
+
+    for(int j = 0; j < nThreshold; ++j) {
+      if (i >= (unsigned int)depthThreshold[j]) {
+        depthDistribution[j] += freq[i];
+      }
     }
-    // old code:
-    //
-    // depthDist.clear();
-    // for(uint32_t i=0; i<(*depthVec).length; i++)
-    //   if((*depthVec).depth[i]>0)
-    //     depthDist[(*depthVec).depth[i]]++;
+  }
+
+  // for(int i = 0; i < nThreshold; ++i) {
+  //   fprintf(stderr, "depth > %d sites: %d\n", depthThreshold[i], depthDistribution[i]);
+  // }
 }
 
 //Should be called after CalcDepthGC and CalcDepthDist to get relative info
+
 void QCStats::CalcGCBias(int start, int end)
 {
     uint64_t totalCoveredGC = 0;
@@ -407,11 +426,11 @@ void QCStats::CalcInsertSize_mode()
         }
 }
 
-void QCStats::CalcInsertSize_medium()
+void QCStats::CalcInsertSize_median()
 {
     uint64_t totalCnt = 0;
     uint64_t partialCnt = 0;
-    insertSize_medium = 0;
+    insertSize_median = 0;
 
     std::map<int32_t, uint64_t>::iterator p;
     for(p=insertSize.begin(); p!=insertSize.end();p++)
@@ -421,7 +440,7 @@ void QCStats::CalcInsertSize_medium()
     {
         partialCnt += p->second;
         if(partialCnt>=totalCnt/2)  {
-            insertSize_medium = p->first;
+            insertSize_median = p->first;
             return;
         }
     }
@@ -444,6 +463,7 @@ void QCStats::PrintSamRecord(SamRecord &sam)
             (const char *) sam.data.quality);
 #endif
 }
+
 
 void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQuality, std::map<int, int> &lanes, std::vector<std::string>& readGroups)
 {
@@ -478,8 +498,8 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     QSamFlag flag;
     flag.GetFlagFields(sam.getFlag());
 
-
     // Filters
+
     if(flag.isPaired==true)
     {
         if(filter.isRead1==true && flag.isRead1==true) return;
@@ -488,7 +508,6 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     if(filter.isPaired==true && flag.isPaired==true) return;
     if(filter.isUnPaired==true && flag.isPaired==false) return;
 
-    nReads++;
 
     String refLabel = sam.getReferenceName();
 //  genomeIndex_t mapPos = referencegenome->getGenomePosition(refLabel.c_str(), sam.data.header->position+1);
@@ -500,6 +519,8 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
         size = sam.getReadLength();
     }
 
+    nReads++;
+
     if(flag.isPaired) {
         nPaired++;
         if(flag.isProperPaired)
@@ -510,18 +531,23 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
         if(sam.getMapQuality()==0) nZeroMapQual++;
         if(sam.getMapQuality()<10) nLT10MapQual++;
     }
+    if(flag.isSecondary) { nSecondary++;  }
     if(flag.isDup) { nDup++;  }
     if(flag.isQCFail) { nQCFail++;  }
 
     if(flag.isUnMapped) { return; }
+    if(filter.isSecondary && flag.isSecondary) { return;  }
     if(filter.isDup && flag.isDup) { return;  }
     if(filter.isQCFail && flag.isQCFail) { return;  }
 
     if(sam.getMapQuality()<minMapQuality) { nUnMapped_Filter++; return; }
 
+    // Still count reads when no regions are specified -- other case at end of loop.
+    if((*regionIndicator).size() == 0) nReadsMapped2TargetRegions++;
+
     // Update insert size for paired reads
     if(insertSize.size()==10000) {
-        //CalcInsertSize_medium();
+        //CalcInsertSize_median();
         std::map<int32_t, uint64_t>::iterator p;
         p = insertSize.end();
         MAX_ISIZE_ALLOWED = (--p)->first > 10000? (--p)->first : 10000;
@@ -530,15 +556,14 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     if(flag.isPaired)
     {
         int iSize = sam.getInsertSize();
-        if(iSize > MAX_ISIZE_ALLOWED) iSize =  MAX_ISIZE_ALLOWED;
-        if(sam.getMapQuality()>MIN_MAPQ && iSize>0)
+        if(iSize > MAX_ISIZE_ALLOWED) iSize = MAX_ISIZE_ALLOWED;
+        if(sam.getMapQuality() > MIN_MAPQ && iSize > 0)
             insertSize[iSize]++;
     }
 
-
-    // Update cycle number since different lenght of read may exist in the same bam file
+    // Update cycle number since different lengths of reads may exist in the same bam file
     // Softclips are excluded from the read length
-    //  cycles[sam.data.sequence.Length()-cigarcol.nClips_begin-cigarcol.nClips_end]++;
+    // cycles[sam.data.sequence.Length()-cigarcol.nClips_begin-cigarcol.nClips_end]++;
     cycles[sam.getReadLength()]++;
 
     if(mapPos==INVALID_GENOME_INDEX)
@@ -560,10 +585,10 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
         for (unsigned int j = 0; j < cigar->getOperator(i).count; j++)
             aligTypes += cigar->getOperator(i).getChar();
 
-    int offset = 0; //to adjust position in ref genome due to insertion 'I' and 'S'
-    int offset2 = 0;  //to adjust position in a read due to deletion 'D'
-    int offset3 = 0; //to adjust positions due to hard clip 'H' at the start
-    int offset4 = 0; //to adjust positions due to hard clip 'H' at the end
+    int offset1 = 0;  //  to adjust position in ref genome due to insertion 'I' and 'S'
+    int offset2 = 0;  //  to adjust position in a read due to deletion 'D'
+    int offset3 = 0;  //  to adjust positions due to hard clip 'H' at the start
+    int offset4 = 0;  //  to adjust positions due to hard clip 'H' at the end
     int nCycles = sam.getReadLength();
 
     char refBase, readBase;
@@ -572,20 +597,18 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     int cycleIdx;
     int qual;
     bool coverRegion = false;
-
     bool isNewRead = true;
     bool hardclip_head = true;
 
     for (int i = 0; i < aligTypes.Length(); i++) {
         if (aligTypes[i] == 'S') {
-            offset--;
+            offset1--;
             hardclip_head = false;
             continue;
         }
         else if (aligTypes[i] == 'I') {
-            offset--;
+            offset1--;
             hardclip_head = false;
-
             continue;
         }
         else if (aligTypes[i] == 'D' || aligTypes[i] == 'N') {
@@ -599,13 +622,23 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
 	     continue;
 	}
 
-        refpos = mapPos + i + offset3 + offset;
+        refpos = mapPos + i + offset3 + offset1;
 
-        if((*regionIndicator).size()>0)
+        refBase = toupper((*referencegenome)[refpos]);
+        if(flag.isReverse==true) refBase = BaseAsciiMap::base2complement[(uint32_t) refBase];
+
+        // Count mapped bases BEFORE restricting to region:
+        // if(refBase=='A' || refBase=='C' || refBase=='G' || refBase=='T') totalMappedBases++;
+        if (refBase!='N') totalMappedBases++;	 	 	// calculated but never used
+
+        if((*regionIndicator).size() > 0)
         {
-            if((*regionIndicator)[refpos]==false) continue;
-            coverRegion = true;
+            if((*regionIndicator)[refpos]==false) continue;	// bail out here
+            coverRegion = true;	 	 	 	 	// not set when no regionIndicator !
         }
+
+        if (refBase!='N') regionMappedBases++;	 	 	// count  regionMappedBases  and
+        (*genomePosCovered)[refpos] = true;	 	 	// genomePosCovered  AFTER  restricting
 
         // Update depth vector and GC content vector
         if (isNewRead){
@@ -613,42 +646,39 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
             depthVec->beginNewRead(refpos);
         }
         depthVec->addBase(refpos);
+
         // if(depthVec!=NULL)
         //   if((*depthVec).depth[refpos]<255)(*depthVec).depth[refpos]++;
+
         if(GC!=NULL)
             depthTotalVsGC[GC->gcCount[refpos]]++;
-
-        (*genomePosCovered)[refpos]=true;
 
         // Excluding dbSNPs for mismatch rate calculation
         if((*dbSNP).size()>0 && (*dbSNP)[refpos]==true) continue;
 
-        refBase = toupper((*referencegenome)[refpos]);
-        if(flag.isReverse==true) refBase = BaseAsciiMap::base2complement[(uint32_t) refBase];
-
         seqpos = i + offset2 + offset3;
         readBase = toupper(sam.getSequence()[seqpos]);
-
         cycleIdx = seqpos - offset3;
-//printf("CIGAR=%s:Len=%d\nrefpos=%d offset=%d offset2=%d offset3=%d offset4=%d seqpos=%d cycleIdx=%d isReverse=%d\n", aligTypes.c_str(), aligTypes.Length(), refpos, offset, offset2, offset3, offset4, seqpos, cycleIdx, flag.isReverse);
 
         if(flag.isReverse==true){
             cycleIdx = nCycles - offset3 - offset4 - cycleIdx - 1;
             readBase = BaseAsciiMap::base2complement[(uint32_t) readBase];
         }
 
-        // Maped based
-        //if(refBase=='A' || refBase=='C' || refBase=='G' || refBase=='T') totalMappedBases++;
-        if(refBase!='N') totalMappedBases++;
+// printf("CIGAR=%s:Len=%d\nrefpos=%d offset1=%d offset2=%d offset3=%d offset4=%d seqpos=%d cycleIdx=%d isReverse=%d\n", 
+// aligTypes.c_str(), aligTypes.Length(), refpos, offset1, offset2, offset3, offset4, seqpos, cycleIdx, flag.isReverse);
+
         //
-        // Base compostion
+        // Base composition
         //
         // NB: when bases match the reference, they are returned as '=',
         // which base2int maps to 5.  But the libsrc Sam code returns '0'
         // instead, which maps to 0 (because BaseAsciiMap::base2int
         // maps color space values as well as base space values).
         //
+
         if(readBase!='=' && readBase != '0') baseCountByCycle[cycleIdx][BaseAsciiMap::base2int[(uint32_t) readBase]]++;
+
         // Base transition matrix (not yet implemented the plotting)
         // matchMatrix[Sequence::nt2idx(refBase)][Sequence::nt2idx(readBase)]++;
 
@@ -668,5 +698,6 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
             misMatchCountByQual[qual]++;
         }
     }
+
     if((*regionIndicator).size()>0 && coverRegion==true) nReadsMapped2TargetRegions++;
 }

@@ -13,8 +13,9 @@ public:
       bool isProperPaired;
         bool isUnMapped;
           bool isReverse;
-            bool isDup;
-              bool isQCFail;
+            bool isSecondary;
+              bool isDup;
+                bool isQCFail;
               
               public:
                 QSamFlag();
@@ -25,6 +26,7 @@ public:
                   void SetPaired(bool b){ isPaired = b; };
                   void SetUnPaired(bool b){ isUnPaired = b; };
                   void SetReverse(bool b){ isReverse = b;};
+                  void SetSecondary(bool b){ isSecondary = b;};
                   void SetDuplicate(bool b){ isDup = b;};
                   void SetQCFail(bool b) { isQCFail = b;};
                   };

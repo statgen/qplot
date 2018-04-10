@@ -1,7 +1,7 @@
 #ifndef _DEPTHCOUNTER_H_
 #define _DEPTHCOUNTER_H_
 
-#define MAX_DEPTH 255
+#define MAX_DEPTH 2017
 /**
  * DepthVector store the depth over certain length on the genome
  * Member variable vector[i] will store the depth on position (start+i)

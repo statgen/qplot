@@ -7,7 +7,7 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 // /**
-//  * Follow 64/32 bit portiability coding standard
+//  * Follow 64/32 bit portability coding standard
 //  * http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#64-bit_Portability
 //  * to deal with MSVC.
 //  * Comment it for now.
@@ -88,7 +88,6 @@ class Graph{
     buffer << yaxis;
     buffer << "</yaxis>";
   }
-
 
   void addData(const char* label, const std::vector<double>& x, const std::vector<double>& y) {
     buffer << "<series label=\"";
@@ -206,19 +205,20 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     fprintf(stderr, "DONE!\n");
   }
 
-  //
+  CalcRegionLength();
+
   //    if(page>1 && !noDepth) depthVec.AllocateMemory(referencegenome.sequenceLength());
 
   for(int i=0; i<bamFiles.Length(); i++)
   {
     fprintf(stderr, "Processing bam/sam file %s...\n", bamFiles[i].c_str());
 
-    // if(page > 1 && !noDepth)
-    //     depthVec.SetZeroCount();
+    // if(page > 1 && !noDepth)  depthVec.SetZeroCount();
 
     // Clear vector of indicator for genome position covered
     genomePosCovered.clear();
     genomePosCovered.resize(referencegenome.sequenceLength());
+
     // Setup appropriate pointers
     stats[i].SetReferenceGenome(&referencegenome);
     stats[i].SetdbSNPIndicator(&dbSNPIndicator);
@@ -237,13 +237,8 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     if(!sam.OpenForRead(bamFiles[i].c_str()))
       error("Open BAM file %s failed!\n", bamFiles[i].c_str());
 
-    if(!sam.ReadHeader(samHeader)) {
+    if(!sam.ReadHeader(samHeader))
       error("Read BAM file header %s failed!\n", bamFiles[i].c_str());
-    }
-    if(!sam.ReadBamIndex()) {
-      error("Read BAM file index %s failed!\n", bamFiles[i].c_str());
-    }
-
 
 #if 0
     // skip reading BAM file index
@@ -293,28 +288,25 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     QSamFlag flag;
 
     uint64_t nRecords = 0;
-    // This loop is processing all records, regardless
-    // no matter they are mapped or not
-    for (int c = 1; c <= 22; ++c ){
-      while(sam.ReadRecord(samHeader, samRecord))
-      {
-        //stats[i].PrintSamRecord(sam);
-        flag.GetFlagFields(samRecord.getFlag());
-        // XXX this call winds up processing unmapped records and prints error messsages:
-        stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
-        if(stats[i].size > size) size = stats[i].size;
-        if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
-      }
+    // This loop processes all records, whether they are mapped or not
+    while(sam.ReadRecord(samHeader, samRecord))
+    {
+      //stats[i].PrintSamRecord(sam);
+      flag.GetFlagFields(samRecord.getFlag());
+      // XXX this call winds up processing unmapped records and prints error messsages:
+      stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
+      if(stats[i].size > size) size = stats[i].size;
+      if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
     }
     stats[i].ReportWarningCount();
     stats[i].CalcMisMatchRateByCycle();
     stats[i].CalcMisMatchRateByQual();
-    stats[i].CalcGenomeCoverage(genomePosCovered, refBaseNCount);
+    stats[i].CalcGenomeCoverage(regionXnLength);
     stats[i].CalcQ20Bases();
     stats[i].CalcQ20BasesByCycle();
     stats[i].CalcBaseComposition();
     stats[i].CalcInsertSize_mode();
-    stats[i].CalcInsertSize_medium();
+    stats[i].CalcInsertSize_median();
     if(page>1 && !noDepth) stats[i].CalcDepthDist();
     if(!noGC) stats[i].CalcDepthGC(GC, genomePosCovered);
     if(!noGC) stats[i].CalcGCBias(20, 80);
@@ -330,12 +322,6 @@ void BamQC::SetQCStatsReferencePtr()
   }
 }
 
-void BamQC::CalcNBaseCount()
-{
-  for(uint32_t i=0; i<referencegenome.sequenceLength(); i++)
-    if(toupper(referencegenome[i])=='N')
-      refBaseNCount++;
-}
 void BamQC::LoadGenomeSequence(String & reference)
 {
 #pragma message "MemoryMap ON"
@@ -355,7 +341,6 @@ void BamQC::LoadGenomeSequence(String & reference)
   if(referencegenome.open())
     error("Open  reference failed...!\n");
 
-  CalcNBaseCount();
   fprintf(stderr, "DONE! Total sequence length %u\n", referencegenome.sequenceLength());
 }
 
@@ -510,6 +495,24 @@ void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
 
 }
 
+void BamQC::CalcRegionLength()
+{
+   //  This calculates the number of non-N bases genome wide and restricted to 
+   //  the target regions (if any).  If no target regions, these are the same.
+   //  Called once at the beginning of  CalculateQCStats().  
+   //  Variable  refBaseNCount  is no longer set or used.
+
+  genomeXnLength = regionXnLength = 0;
+
+  for(uint32_t i=0; i<referencegenome.sequenceLength(); i++)
+    if(toupper(referencegenome[i])!='N'){
+      genomeXnLength++;
+      if (regionIndicator.size()==0)
+        regionXnLength++;
+      else if (regionIndicator[i]) 
+        regionXnLength++;
+    }
+}
 
 void BamQC::OutputStats(String &statsFile)
 {
@@ -524,10 +527,18 @@ void BamQC::OutputStats(String &statsFile)
 
   if(OUT==NULL) error("Open file %s failed!\n", statsFile.c_str());
 
-  // Output header
+  // Output header // Use bamLabels if available, otherwise bamFiles
+
+  StringArray bamLabelArray;
+  if(bamLabel.Length() > 0) {
+    bamLabelArray.ReplaceTokens(bamLabel, ",");
+  } else {
+    bamLabelArray = bamFiles;
+  }
+
   fprintf(OUT, "Stats\\BAM");
   for(int i=0; i<bamFiles.Length(); i++)
-    fprintf(OUT, "\t%s", bamFiles[i].c_str());
+    fprintf(OUT, "\t%s", bamLabelArray[i].c_str());
 
   // Output all statistics
   fprintf(OUT, "\nTotalReads(e6)");
@@ -564,7 +575,7 @@ void BamQC::OutputStats(String &statsFile)
 
   fprintf(OUT, "\nMappedBases(e9)");
   for(int i=0; i<bamFiles.Length(); i++)
-    fprintf(OUT, "\t%.2f", double(stats[i].totalMappedBases)/1000000000);
+    fprintf(OUT, "\t%.2f", double(stats[i].regionMappedBases)/1000000000);  // was:  totalMappedBases/1000000000
 
   fprintf(OUT, "\nQ20Bases(e9)");
   for(int i=0; i<bamFiles.Length(); i++)
@@ -598,9 +609,13 @@ void BamQC::OutputStats(String &statsFile)
   for(int i=0; i<bamFiles.Length(); i++)
     fprintf(OUT, "\t%d", stats[i].insertSize_mode);
 
-  fprintf(OUT, "\nISize_medium");
+  fprintf(OUT, "\nISize_median");
   for(int i=0; i<bamFiles.Length(); i++)
-    fprintf(OUT, "\t%d", stats[i].insertSize_medium);
+    fprintf(OUT, "\t%d", stats[i].insertSize_median);
+
+  fprintf(OUT, "\nSecondaryRate(%%)");
+  for(int i=0; i<bamFiles.Length(); i++)
+    fprintf(OUT, "\t%.2f", 100*double(stats[i].nSecondary)/stats[i].nReads);
 
   fprintf(OUT, "\nDupRate(%%)");
   for(int i=0; i<bamFiles.Length(); i++)
@@ -630,6 +645,14 @@ void BamQC::OutputStats(String &statsFile)
   for(int i=0; i<bamFiles.Length(); i++)
     fprintf(OUT, "\t%.1f", stats[i].baseComposition[4]+stats[i].baseComposition[5]);
 
+  int nThreshold = sizeof(QCStats::depthThreshold) /sizeof(QCStats::depthThreshold[0]);
+  for (int i = 0; i < nThreshold; ++i) {
+    fprintf(OUT, "\nDepth>=%d(%%)", stats[i].depthThreshold[i] );
+    for(int j=0; j<bamFiles.Length(); j++) {
+      fprintf(OUT, "\t%.2f", 100.0 * stats[j].depthDistribution[i] / regionXnLength);
+    }
+  }
+  
   fprintf(OUT, "\n");
 
   if(statsFile.Length()>0)
@@ -779,17 +802,9 @@ void BamQC::OutputXML(FILE *fp)
 
   graph.newPlot();
   graph.setTitle("Depth Distribution");
-  graph.setXaxisTitle("Depth", 0, 200); //
-  graph.setYaxisTitle("Percentage of Covered Site");
+  graph.setXaxisTitle("Depth", 0, 200);
+  graph.setYaxisTitle("Percentage of Covered Sites");
 
-  uint64_t sites = 0;
-  if (regionIndicator.size()==0) {
-    sites = referencegenome.sequenceLength();
-  } else{
-    for (unsigned int i = 0; i < regionIndicator.size() ; i++) {
-      if (regionIndicator[i]) sites++;
-    }
-  }
   for (int idx = 0; idx < bamFiles.Length(); idx ++ ) {
     x.clear(); y.clear();
     uint64_t sumY = 0;
@@ -803,11 +818,11 @@ void BamQC::OutputXML(FILE *fp)
       y[yi] += y[yi-1];
     }
     for (unsigned int yi = 0; yi < y.size(); ++yi) {
-      y[yi] = (sumY - y[yi]) / sites * 100;
+      y[yi] = (sumY - y[yi]) / regionXnLength * 100;
     }
     std::ostringstream s;
     s << bamLabelArray[idx].c_str();
-    s << " (No coverage = " << (1.0 - sumY / sites) * 100 << "%)";
+    s << " (No coverage = " << (1.0 - sumY / regionXnLength) * 100 << "%)";
     graph.addData(s.str().c_str(), x, y);
   }
   graph.closePlot();
@@ -1081,26 +1096,18 @@ String BamQC::GenRscript_DepthDist_Plot()
     s += GenRscript_DepthDist_Data(i);
   }
 
-  // total site
+  // create an R variable "total.sites" whose value is  regionXnLength,  used twice below
   char temp[100];
-  uint64_t sites = 0;
-  if (regionIndicator.size()==0) {
-    sites = referencegenome.sequenceLength();
-  } else{
-    for (unsigned int i = 0; i < regionIndicator.size() ; i++) {
-      if (regionIndicator[i]) sites++;
-    }
-  }
-  sprintf(temp, "%"PRIu64"", sites);
-  s += "total.site = ";
+  sprintf(temp, "%"PRIu64"", regionXnLength);
+  s += "total.sites = ";
   s += temp;
   s += "\n";
 
   // make depth.legend.txt
   s += "depth.legend.txt = legend.txt\n";
   s += "for(i in 1:NFiles){";
-  s += "depth.legend.txt[i] = paste(legend.txt[i], '  (No coverage = ',round((1-sum(Y[[i]])/total.site)*100,2), '% )'); ";
-  s += "Y[[i]]=(sum(Y[[i]]) - cumsum(Y[[i]]))/total.site * 100; ";
+  s += "depth.legend.txt[i] = paste(legend.txt[i], '  (No coverage = ', round((1 - sum(Y[[i]]) / total.sites) * 100, 2), '% )'); ";
+  s += "Y[[i]]=(sum(Y[[i]]) - cumsum(Y[[i]])) / total.sites * 100; ";
   s += "}\n";
 
   s += "MAX.X=0; MAX.Y=0; \nfor(i in 1:NFiles){\n tmp = length(which(Y[[i]] > max(Y[[i]])*0.6)) ; \n if (tmp < 10) tmp = 10; \n if (MAX.X < tmp) MAX.X = tmp; \n if (MAX.Y < max(Y[[i]])) MAX.Y = max(Y[[i]]); }\n";
