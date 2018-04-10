@@ -7,7 +7,7 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 // /**
-//  * Follow 64/32 bit portiability coding standard
+//  * Follow 64/32 bit portability coding standard
 //  * http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#64-bit_Portability
 //  * to deal with MSVC.
 //  * Comment it for now.
@@ -88,7 +88,6 @@ class Graph{
     buffer << yaxis;
     buffer << "</yaxis>";
   }
-
 
   void addData(const char* label, const std::vector<double>& x, const std::vector<double>& y) {
     buffer << "<series label=\"";
@@ -206,19 +205,20 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     fprintf(stderr, "DONE!\n");
   }
 
-  //
+  CalcRegionLength();
+
   //    if(page>1 && !noDepth) depthVec.AllocateMemory(referencegenome.sequenceLength());
 
   for(int i=0; i<bamFiles.Length(); i++)
   {
-    fprintf(stderr, "Processing BAM/SAM file %s...\n", bamFiles[i].c_str());
+    fprintf(stderr, "Processing bam/sam file %s...\n", bamFiles[i].c_str());
 
-    // if(page > 1 && !noDepth)
-    //     depthVec.SetZeroCount();
+    // if(page > 1 && !noDepth)  depthVec.SetZeroCount();
 
     // Clear vector of indicator for genome position covered
     genomePosCovered.clear();
     genomePosCovered.resize(referencegenome.sequenceLength());
+
     // Setup appropriate pointers
     stats[i].SetReferenceGenome(&referencegenome);
     stats[i].SetdbSNPIndicator(&dbSNPIndicator);
@@ -237,74 +237,76 @@ void BamQC::CalculateQCStats(QSamFlag &filter, double minMapQuality)
     if(!sam.OpenForRead(bamFiles[i].c_str()))
       error("Open BAM file %s failed!\n", bamFiles[i].c_str());
 
-    if(!sam.ReadHeader(samHeader)) {
+    if(!sam.ReadHeader(samHeader))
       error("Read BAM file header %s failed!\n", bamFiles[i].c_str());
-    }
 
 #if 0
-    // dump reference info
-    const SamReferenceInfo* info = samHeader.getReferenceInfo();
-    int nRef = info->getNumEntries();
-    for (int i = 0; i < nRef; ++i) {
-      fprintf(stderr, "ref = %s,length = %d\n", info->getReferenceName(i), info->getReferenceLength(i));
-      fprintf(stderr, "mapped = %d, unmapped = %d",
-              sam.getNumMappedReadsFromIndex(i),
-              sam.getNumUnMappedReadsFromIndex(i));
+    // skip reading BAM file index
+    if (!sam.ReadBamIndex()){
+      fprintf(stderr, "Read BAM file index failed");
+    } else {
+      fprintf(stderr, "Read BAM file index OK");
     }
 #endif
-
-    QSamFlag flag;
-    uint64_t nRecords = 0;
-    // This loop is processing all records, regardless
-    // no matter they are mapped or not
-    if (sampledRegion.empty()) {
-      while(sam.ReadRecord(samHeader, samRecord)) {
+    // // dump reference info
+    // const SamReferenceInfo* info = samHeader.getReferenceInfo();
+    // int nRef = info->getNumEntries();
+    // for (int i = 0; i < nRef; ++i) {
+    //   fprintf(stderr, "ref = %s,length = %d\n", info->getReferenceName(i), info->getReferenceLength(i));
+    //   fprintf(stderr, "mapped = %d, unmapped = %d",
+    //           sam.getNumMappedReadsFromIndex(i),
+    //           sam.getNumUnMappedReadsFromIndex(i));              
+    // }
+    // // dump read counts
+#if 0
+    /**
+     * This piece of code is a proof of concept that QPLOT can be speed up by
+     * processing regions of the whole BAM files
+     */
+    for (int c = 1; c <= 22; ++c ){
+      char chrom[10];
+      fprintf(stderr, "Check chromosome %d\n", c);
+      sprintf(chrom, "%d", c);
+      sam.SetReadSection(chrom, 5000000, 10000000);
+      while(sam.ReadRecord(samHeader, samRecord))
+      {
+        // fprintf(stdout, "Out use 5M - 10M region");
+        // int32_t pos = samRecord.get1BasedPosition();
+        // if (pos < 5000000 || pos > 10000000) {
+        //   continue;
+        // }
         //stats[i].PrintSamRecord(sam);
         flag.GetFlagFields(samRecord.getFlag());
         // XXX this call winds up processing unmapped records and prints error messsages:
         stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
-        if(stats[i].size > size) size = stats[i].size;
+        if(stats[i].size>size) size = stats[i].size;
         if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
       }
-    } else {
-      // check bam index file
-      if(!sam.ReadBamIndex()) {
-        error("Read BAM file index %s failed, use 'samtools index' to create one, it is needed for downsampling speedup!\n", bamFiles[i].c_str());
-      }
-
-      // process each region
-      for (size_t j = 0; j != sampledRegion.size(); ++j) {
-        sam.SetReadSection(sampledRegion.getChrom(j),
-                           sampledRegion.getBegin(j),
-                           sampledRegion.getEnd(j));
-        fprintf(stderr, "Processing %s:%d-%d\n",
-                sampledRegion.getChrom(j),
-                sampledRegion.getBegin(j),
-                sampledRegion.getEnd(j));
-        while(sam.ReadRecord(samHeader, samRecord)) {
-          // stats[i].PrintSamRecord(samRecord);
-          flag.GetFlagFields(samRecord.getFlag());
-          // XXX this call winds up processing unmapped records and prints error messsages:
-          stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
-          if(stats[i].size>size) size = stats[i].size;
-          if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
-        }
-      }
     }
+#endif
+    
+    QSamFlag flag;
 
-
+    uint64_t nRecords = 0;
+    // This loop processes all records, whether they are mapped or not
+    while(sam.ReadRecord(samHeader, samRecord))
+    {
+      //stats[i].PrintSamRecord(sam);
+      flag.GetFlagFields(samRecord.getFlag());
+      // XXX this call winds up processing unmapped records and prints error messsages:
+      stats[i].UpdateStats(samRecord, filter, minMapQuality, lanes2Process, readGroup2Process);
+      if(stats[i].size > size) size = stats[i].size;
+      if(nRecords2Process>0 && (++nRecords)==unsigned(nRecords2Process)) break;
+    }
     stats[i].ReportWarningCount();
     stats[i].CalcMisMatchRateByCycle();
     stats[i].CalcMisMatchRateByQual();
-    if (refBaseNCount <= 0) {
-      CalcNBaseCount();
-    }
-    stats[i].CalcGenomeCoverage(genomePosCovered, refBaseNCount);
+    stats[i].CalcGenomeCoverage(regionXnLength);
     stats[i].CalcQ20Bases();
     stats[i].CalcQ20BasesByCycle();
     stats[i].CalcBaseComposition();
     stats[i].CalcInsertSize_mode();
-    stats[i].CalcInsertSize_medium();
+    stats[i].CalcInsertSize_median();
     if(page>1 && !noDepth) stats[i].CalcDepthDist();
     if(!noGC) stats[i].CalcDepthGC(GC, genomePosCovered);
     if(!noGC) stats[i].CalcGCBias(20, 80);
@@ -320,12 +322,6 @@ void BamQC::SetQCStatsReferencePtr()
   }
 }
 
-void BamQC::CalcNBaseCount()
-{
-  for(uint32_t i=0; i<referencegenome.sequenceLength(); i++)
-    if(toupper(referencegenome[i])=='N')
-      refBaseNCount++;
-}
 void BamQC::LoadGenomeSequence(String & reference)
 {
 #pragma message "MemoryMap ON"
@@ -393,118 +389,130 @@ void BamQC::LoaddbSNP(String & dbSNPFile)
   fprintf(stderr, "DONE!\n");
 }
 
-void BamQC::LoadRegions(String & regionsFile, bool invertRegion, double fraction)
+void BamQC::LoadRegions(String & regionsFile, bool invertRegion)
 {
-  // sub sample region if necessary.
-  if(regionsFile.Length() == 0) {
-    sampledRegion.sampleGenome(referencegenome, fraction);
+  if(regionsFile.Length()==0) return;
 
-    totalSites = referencegenome.sequenceLength();
-  } else {
-    sampledRegion.sampleWithRegion(referencegenome, regionsFile, invertRegion, fraction);
+  IFILE fhRegions;
+  fhRegions = ifopen(regionsFile.c_str(),"r");
+  if(fhRegions==NULL)
+    error("Open regions file %s failed!\n", regionsFile.c_str());
 
-    // load region files
-    IFILE fhRegions;
-    fhRegions = ifopen(regionsFile.c_str(),"r");
-    if(fhRegions==NULL)
-      error("Open regions file %s failed!\n", regionsFile.c_str());
+  regionIndicator.resize(referencegenome.sequenceLength());
 
-    regionIndicator.resize(referencegenome.sequenceLength());
+  StringArray tokens;
+  String buffer;
+  int len;
 
-    StringArray tokens;
-    String buffer;
-    int len;
+  fprintf(stderr, "Loading region list...");
 
-    fprintf(stderr, "Loading region list...");
+  // record errors
+  int numError = 0;
+  const int MAX_ERROR = 20;
+  StringIntHash wrongChromosomeCount;
+  
+  while (!ifeof(fhRegions)){
+    tokens.Clear();
+    buffer.Clear();
+    buffer.ReadLine(fhRegions);
+    if (buffer.IsEmpty() || buffer[0] == '#') continue;
 
-    // record errors
-    int numError = 0;
-    const int MAX_ERROR = 20;
-    StringIntHash wrongChromosomeCount;
-
-    while (!ifeof(fhRegions)){
-      tokens.Clear();
-      buffer.Clear();
-      buffer.ReadLine(fhRegions);
-      if (buffer.IsEmpty() || buffer[0] == '#') continue;
-
-      tokens.AddTokens(buffer, WHITESPACE);
-      if(tokens.Length() < 3) {
-        numError ++;
-        fprintf(stderr, "WARNING: Not the correct format (chrom start end) in this line [ %s ], skipping...\n", buffer.c_str());
-        if (numError > MAX_ERROR) {
-          fprintf(stderr, "Too many errors in your region file, now quitting....\n");
-          exit(1);
-        }
-        continue;
+    tokens.AddTokens(buffer, WHITESPACE);
+    if(tokens.Length() < 3) {
+      numError ++;
+      fprintf(stderr, "WARNING: Not the correct format (chrom start end) in this line [ %s ], skipping...\n", buffer.c_str());
+      if (numError > MAX_ERROR) {
+        fprintf(stderr, "Too many errors in your region file, now quitting....\n");
+        exit(1);
       }
-
-      genomeIndex_t startGenomeIndex = 0;
-
-      long chromosomeBeginIndex;
-      long chromosomeEndIndex;
-      if (!tokens[1].AsInteger(chromosomeBeginIndex) || !tokens[2].AsInteger(chromosomeEndIndex)) {
-        numError ++;
-        fprintf(stderr, "WARNING: Chromosome position [ %s ] or [ %s ] is not recognized!\n", tokens[1].c_str(), tokens[2].c_str());
-        if (numError > MAX_ERROR) {
-          fprintf(stderr, "Too many errors in your region file, now quitting....\n");
-          exit(1);
-        }
-        continue;
-      }
-
-      startGenomeIndex = referencegenome.getGenomePosition(tokens[0].c_str(), chromosomeBeginIndex);
-      if (startGenomeIndex == INVALID_GENOME_INDEX) {
-        numError ++;
-        // we cannot print out each error, as some chromosome GLXXXX.XXX chromosome may not in reference genome
-        // so we will just record the error
-        wrongChromosomeCount.IncrementCount(tokens[0]);
-        continue;
-      }
-
-      if(startGenomeIndex >= regionIndicator.size() ) {
-        // fprintf(stderr, "WARNING: region list section %s position %u is not found in the reference and skipped...\n", tokens[0].c_str(), chromosomeIndex);
-        continue;
-      }
-
-      len = tokens[2].AsInteger() - tokens[1].AsInteger() + 1;
-      for(uint32_t i=startGenomeIndex; i<startGenomeIndex+len; i++)
-        regionIndicator[i] = true;
-
-      tokens.Clear();
-      buffer.Clear();
+      continue;      
     }
-    for (int i = 0; i < wrongChromosomeCount.Capacity(); ++i)
-    {
-      if (wrongChromosomeCount.SlotInUse(i)) {
-        fprintf(stderr, "WARNING: BAM file contains [ %d ] reads in chromosome [ %s ], but reference genome does not have this chromosome. Skipped.\n",
-                wrongChromosomeCount.Integer(i), wrongChromosomeCount[i].c_str());
-      }
-    }
-    uint64_t& sites = this->totalSites;
-    sites = 0;
-    if (invertRegion) {
-      fprintf(stderr, " invert region...");
-      for (uint32_t i = 0; i < regionIndicator.size(); i++) {
-        regionIndicator[i] = !regionIndicator[i];
-        if (regionIndicator[i]) sites++;
-      }
-    } else {
-      for (uint32_t i = 0; i < regionIndicator.size(); i++) {
-        if (regionIndicator[i]) sites++;
-      }
-    }
-    fprintf(stderr, " total region length = %"PRIu64" ", sites);
-    ifclose(fhRegions);
 
-    if ( 0 == (int) sites ) {
-      fprintf(stderr, "ERROR!! Your total region length is ZERO, please check your region file!");
-      exit(1);
-    };
+    genomeIndex_t startGenomeIndex = 0;
+    
+    long chromosomeBeginIndex;
+    long chromosomeEndIndex;
+    if (!tokens[1].AsInteger(chromosomeBeginIndex) || !tokens[2].AsInteger(chromosomeEndIndex)) {
+      numError ++;
+      fprintf(stderr, "WARNING: Chromosome position [ %s ] or [ %s ] is not recognized!\n", tokens[1].c_str(), tokens[2].c_str());
+      if (numError > MAX_ERROR) {
+        fprintf(stderr, "Too many errors in your region file, now quitting....\n");
+        exit(1);
+      }
+      continue;
+    }        
+    
+    startGenomeIndex = referencegenome.getGenomePosition(tokens[0].c_str(), chromosomeBeginIndex);
+    if (startGenomeIndex == INVALID_GENOME_INDEX) {
+      numError ++;
+      // we cannot print out each error, as some chromosome GLXXXX.XXX chromosome may not in reference genome
+      // so we will just record the error
+      wrongChromosomeCount.IncrementCount(tokens[0]);
+      continue;
+    }
+        
+    if(startGenomeIndex >= regionIndicator.size() ) {
+      // fprintf(stderr, "WARNING: region list section %s position %u is not found in the reference and skipped...\n", tokens[0].c_str(), chromosomeIndex);
+      continue;
+    }
+
+    len = tokens[2].AsInteger() - tokens[1].AsInteger() + 1;
+    for(uint32_t i=startGenomeIndex; i<startGenomeIndex+len; i++)
+      regionIndicator[i] = true;
+
+    tokens.Clear();
+    buffer.Clear();
   }
+  for (int i = 0; i < wrongChromosomeCount.Capacity(); ++i)
+  {
+    if (wrongChromosomeCount.SlotInUse(i)) {
+      fprintf(stderr, "WARNING: BAM file contains [ %d ] reads in chromosome [ %s ], but reference genome does not have this chromosome. Skipped.\n",
+              wrongChromosomeCount.Integer(i), wrongChromosomeCount[i].c_str());
+    }
+  } 
+  
+  uint64_t sites = 0;
+  if (invertRegion) {
+    fprintf(stderr, " invert region...");
+    for (uint32_t i = 0; i < regionIndicator.size(); i++) {
+      regionIndicator[i] = !regionIndicator[i];
+      if (regionIndicator[i]) sites++;
+    }
+  } else {
+    for (uint32_t i = 0; i < regionIndicator.size(); i++) {
+      if (regionIndicator[i]) sites++;
+    }
+  }
+  fprintf(stderr, " total region length = %"PRIu64" ", sites);
+  ifclose(fhRegions);
+
+  if ( 0 == (int) sites ) {
+    fprintf(stderr, "ERROR!! Your total region length is ZERO, please check your region file!");
+    exit(1);
+  };
+
   fprintf(stderr, "DONE!\n");
+
 }
 
+void BamQC::CalcRegionLength()
+{
+   //  This calculates the number of non-N bases genome wide and restricted to 
+   //  the target regions (if any).  If no target regions, these are the same.
+   //  Called once at the beginning of  CalculateQCStats().  
+   //  Variable  refBaseNCount  is no longer set or used.
+
+  genomeXnLength = regionXnLength = 0;
+
+  for(uint32_t i=0; i<referencegenome.sequenceLength(); i++)
+    if(toupper(referencegenome[i])!='N'){
+      genomeXnLength++;
+      if (regionIndicator.size()==0)
+        regionXnLength++;
+      else if (regionIndicator[i]) 
+        regionXnLength++;
+    }
+}
 
 void BamQC::OutputStats(String &statsFile)
 {
@@ -519,10 +527,18 @@ void BamQC::OutputStats(String &statsFile)
 
   if(OUT==NULL) error("Open file %s failed!\n", statsFile.c_str());
 
-  // Output header
+  // Output header // Use bamLabels if available, otherwise bamFiles
+
+  StringArray bamLabelArray;
+  if(bamLabel.Length() > 0) {
+    bamLabelArray.ReplaceTokens(bamLabel, ",");
+  } else {
+    bamLabelArray = bamFiles;
+  }
+
   fprintf(OUT, "Stats\\BAM");
   for(int i=0; i<bamFiles.Length(); i++)
-    fprintf(OUT, "\t%s", bamFiles[i].c_str());
+    fprintf(OUT, "\t%s", bamLabelArray[i].c_str());
 
   // Output all statistics
   fprintf(OUT, "\nTotalReads(e6)");
@@ -559,7 +575,7 @@ void BamQC::OutputStats(String &statsFile)
 
   fprintf(OUT, "\nMappedBases(e9)");
   for(int i=0; i<bamFiles.Length(); i++)
-    fprintf(OUT, "\t%.2f", double(stats[i].totalMappedBases)/1000000000);
+    fprintf(OUT, "\t%.2f", double(stats[i].regionMappedBases)/1000000000);  // was:  totalMappedBases/1000000000
 
   fprintf(OUT, "\nQ20Bases(e9)");
   for(int i=0; i<bamFiles.Length(); i++)
@@ -593,9 +609,9 @@ void BamQC::OutputStats(String &statsFile)
   for(int i=0; i<bamFiles.Length(); i++)
     fprintf(OUT, "\t%d", stats[i].insertSize_mode);
 
-  fprintf(OUT, "\nISize_medium");
+  fprintf(OUT, "\nISize_median");
   for(int i=0; i<bamFiles.Length(); i++)
-    fprintf(OUT, "\t%d", stats[i].insertSize_medium);
+    fprintf(OUT, "\t%d", stats[i].insertSize_median);
 
   fprintf(OUT, "\nSecondaryRate(%%)");
   for(int i=0; i<bamFiles.Length(); i++)
@@ -633,7 +649,7 @@ void BamQC::OutputStats(String &statsFile)
   for (int i = 0; i < nThreshold; ++i) {
     fprintf(OUT, "\nDepth>=%d(%%)", stats[i].depthThreshold[i] );
     for(int j=0; j<bamFiles.Length(); j++) {
-      fprintf(OUT, "\t%.1f", 100.0 * stats[j].depthDistribution[i] / totalSites);
+      fprintf(OUT, "\t%.2f", 100.0 * stats[j].depthDistribution[i] / regionXnLength);
     }
   }
   
@@ -786,18 +802,9 @@ void BamQC::OutputXML(FILE *fp)
 
   graph.newPlot();
   graph.setTitle("Depth Distribution");
-  graph.setXaxisTitle("Depth", 0, 200); //
-  graph.setYaxisTitle("Percentage of Covered Site");
+  graph.setXaxisTitle("Depth", 0, 200);
+  graph.setYaxisTitle("Percentage of Covered Sites");
 
-  // uint64_t sites = 0;
-  // if (regionIndicator.size()==0) {
-  //   sites = referencegenome.sequenceLength();
-  // } else{
-  //   for (unsigned int i = 0; i < regionIndicator.size() ; i++) {
-  //     if (regionIndicator[i]) sites++;
-  //   }
-  // }
-  const uint64_t& sites = totalSites;
   for (int idx = 0; idx < bamFiles.Length(); idx ++ ) {
     x.clear(); y.clear();
     uint64_t sumY = 0;
@@ -811,11 +818,11 @@ void BamQC::OutputXML(FILE *fp)
       y[yi] += y[yi-1];
     }
     for (unsigned int yi = 0; yi < y.size(); ++yi) {
-      y[yi] = (sumY - y[yi]) / sites * 100;
+      y[yi] = (sumY - y[yi]) / regionXnLength * 100;
     }
     std::ostringstream s;
     s << bamLabelArray[idx].c_str();
-    s << " (No coverage = " << (1.0 - sumY / sites) * 100 << "%)";
+    s << " (No coverage = " << (1.0 - sumY / regionXnLength) * 100 << "%)";
     graph.addData(s.str().c_str(), x, y);
   }
   graph.closePlot();
@@ -1089,27 +1096,18 @@ String BamQC::GenRscript_DepthDist_Plot()
     s += GenRscript_DepthDist_Data(i);
   }
 
-  // total site
+  // create an R variable "total.sites" whose value is  regionXnLength,  used twice below
   char temp[100];
-  // uint64_t sites = 0;
-  // if (regionIndicator.size()==0) {
-  //   sites = referencegenome.sequenceLength();
-  // } else{
-  //   for (unsigned int i = 0; i < regionIndicator.size() ; i++) {
-  //     if (regionIndicator[i]) sites++;
-  //   }
-  // }
-  const uint64_t& sites = this->totalSites;
-  sprintf(temp, "%"PRIu64"", sites);
-  s += "total.site = ";
+  sprintf(temp, "%"PRIu64"", regionXnLength);
+  s += "total.sites = ";
   s += temp;
   s += "\n";
 
   // make depth.legend.txt
   s += "depth.legend.txt = legend.txt\n";
   s += "for(i in 1:NFiles){";
-  s += "depth.legend.txt[i] = paste(legend.txt[i], '  (No coverage = ',round((1-sum(Y[[i]])/total.site)*100,2), '% )'); ";
-  s += "Y[[i]]=(sum(Y[[i]]) - cumsum(Y[[i]]))/total.site * 100; ";
+  s += "depth.legend.txt[i] = paste(legend.txt[i], '  (No coverage = ', round((1 - sum(Y[[i]]) / total.sites) * 100, 2), '% )'); ";
+  s += "Y[[i]]=(sum(Y[[i]]) - cumsum(Y[[i]])) / total.sites * 100; ";
   s += "}\n";
 
   s += "MAX.X=0; MAX.Y=0; \nfor(i in 1:NFiles){\n tmp = length(which(Y[[i]] > max(Y[[i]])*0.6)) ; \n if (tmp < 10) tmp = 10; \n if (MAX.X < tmp) MAX.X = tmp; \n if (MAX.Y < max(Y[[i]])) MAX.Y = max(Y[[i]]); }\n";

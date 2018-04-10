@@ -2,7 +2,7 @@
 EXE=qplot
 ########################
 # The Files:
-TOOLBASE = GCContent  QSamFlag Sequence BamQC QCStats MmapFile DepthCounter RegionSampler
+TOOLBASE = GCContent  QSamFlag Sequence BamQC QCStats MmapFile DepthCounter
 SRCONLY=Main.cpp
 HDRONLY=FlagDef.h
 

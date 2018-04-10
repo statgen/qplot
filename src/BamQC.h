@@ -9,14 +9,9 @@
 #include "StringArray.h"
 #include "GenomeSequence.h"
 #include "QCStats.h"
-#include "RegionSampler.h"
 
 #define MAXQ 50
 
-/**
- * BamQC contain common configuration
- * and it delegate class QCStats for each each .SAM/.BAM file.
- */
 class BamQC
 {
  public:
@@ -30,10 +25,11 @@ class BamQC
   int size;
   std::vector<bool> dbSNPIndicator;
   std::vector<bool> regionIndicator;
-  uint64_t totalSites;
   std::vector<bool> genomePosCovered;
   GenomeSequence referencegenome;
-  uint32_t refBaseNCount;
+  uint64_t genomeXnLength;  // non-N genome length
+  uint64_t regionXnLength;  // non-N region length
+  uint32_t refBaseNCount;   // no longer used
   DepthCounter depthVec;
   GCContent GC;
   QCStats *stats;
@@ -41,8 +37,7 @@ class BamQC
   bool noDepth; // Indicator of whether to process depth dist
   bool noGC; // Indicator of whether to process GC content
   int page;
-  RegionSampler sampledRegion;
-  
+
  public:
   BamQC();
   BamQC(StringArray &);
@@ -50,18 +45,18 @@ class BamQC
   ~BamQC();
   void Init(StringArray &, int);
   void SkipCheckEof();  
-  void SetGCInputFile(String &in){ GCInputFile = in; };
-  void SetQCStatsReferencePtr();
-  void SetLabel(String &lb) { label = lb; }
-  void SetBamLabels(String &lb) {bamLabel = lb; }
   void SetLanes2Process(String &);
   void SetReadGroup2Process(String &);
-  void LoadRegions(String &, bool invert, double fraction); // if @param invert = true: we need to flip the regionIndicator; o/w, do nothing.
-  void LoadGenomeSequence(String & refGenomeFile);
-  void LoaddbSNP(String & dbSNPFile);
-  void CalcNBaseCount();
   void SetNumRecords2Process(int n) { nRecords2Process=n; }
   void CalculateQCStats(QSamFlag &filter, double minMapQual);
+  void SetGCInputFile(String &in){ GCInputFile = in; };
+  void SetLabel(String &lb) { label = lb; }
+  void SetBamLabels(String &lb) {bamLabel = lb; }
+  void SetQCStatsReferencePtr();
+  void LoadGenomeSequence(String & refGenomeFile);
+  void LoaddbSNP(String & dbSNPFile);
+  void LoadRegions(String &, bool invert); // if @param invert = true: we need to flip the regionIndicator; o/w, do nothing.
+  void CalcRegionLength();
   void OutputStats(String &);
   void OutputXML(FILE *pf);
   //void OutputPlotData(String &);

@@ -435,7 +435,7 @@ can help identify problems after obtaining sequencing data.
 -   Base quality distributed abnormally
 
 [Example of qplot helping to identify wrong phred base
-quality](http://genome.sph.umich.edu//wiki/Media:_WrongBaseQual.pdf "Media: WrongBaseQual.pdf")
+quality]http://genome.sph.umich.edu//wiki/Media:_WrongBaseQual.pdf "Media: WrongBaseQual.pdf")
 
 By checking the first graph "Empirical vs reported Phred score", we
 found reported base qualities are shifted to the right. In this

@@ -18,11 +18,10 @@
 
 using namespace std;
 
-
 class QCStats
 {
   void constructorClear();
- public:
+public:
   GenomeSequence *referencegenome;
   std::vector<bool> * regionIndicator;
   std::vector<bool> * dbSNP;
@@ -33,9 +32,7 @@ class QCStats
   uint64_t depthTotalVsGC[101];
   double   depthVsGC[101];
   double   depthVsGC_norm[101];
-  static const int depthThreshold[6];
-  uint32_t depthDistribution[6]; // count >=1, >=5, ... sites
-      
+  
   std::map<int, uint64_t> matchCountByQual;
   std::map<int, uint64_t> misMatchCountByQual;
   std::map<int, double> misMatchRateByQual;
@@ -45,18 +42,21 @@ class QCStats
   std::map<int, uint64_t> qualCount;
   std::map<int, uint64_t> Q20QualScores;
   std::vector<int> qual;
-  std::map<int, uint64_t> depthDist;
   std::vector<bool> *genomePosCovered;
   std::map<int32_t, uint64_t> insertSize;
   std::map<int, uint64_t> cycles;
-  int size; // Max lenght of reads 
-  int size_reserved; // Size of memory allocated
+  std::map<int, uint64_t> depthDist;
+  static const int depthThreshold[7];
+  uint32_t depthDistribution[7]; // count >=1, >=5, ... sites
+      
+  int size;	 	 	 // Max length of reads 
+  int size_reserved;	 	 // Size of memory allocated
   uint64_t *matchCountByCycle;
   uint64_t *misMatchCountByCycle;
   double  *misMatchRateByCycle;
-  uint64_t totalMappedBases;
+  uint64_t totalMappedBases;	// calculated but never used
+  uint64_t regionMappedBases;	// used at BamQC.cpp line 570
   double coverage;  
-  uint32_t nBaseCovered;
   uint64_t matchMatrix[6][6];
   uint64_t **baseCountByCycle;
   double **baseCompositionByCycle;
@@ -71,17 +71,17 @@ class QCStats
   uint64_t nReadsMapped2TargetRegions;
   uint64_t nQ20;
   double   pQ20; //proportion of Q20 bases
-  uint64_t nSecondary;
   uint64_t nDup;
   uint64_t nQCFail;
   uint64_t nPaired;
   uint64_t nProperPaired;
+  uint64_t nSecondary;
   double genomeCoverage;
   double gcBiasStat;
   double insertSize_mean;
   double insertSize_var;
   int insertSize_mode;
-  int insertSize_medium;
+  int insertSize_median;
   int MAX_ISIZE_ALLOWED;
   uint64_t nWarnings;
 
@@ -98,7 +98,7 @@ public:
   void SetGCContent(GCContent *gc) { GC = gc; }
   void SetDepth(DepthCounter *depth) {depthVec = depth;}
   void SetRegionIndicator(std::vector<bool> *region){regionIndicator = region;};
-  void CalcGenomeCoverage(std::vector<bool> &, uint32_t);
+  void CalcGenomeCoverage(uint64_t);
   void CalcMisMatchRateByCycle();
   double CalcMisMatchRateByCycle_MEAN();
   void CalcMisMatchRateByQual();
@@ -113,7 +113,7 @@ public:
   void CalcInsertSize_mean();
   void CalcInsertSize_var();
   void CalcInsertSize_mode();
-  void CalcInsertSize_medium();
+  void CalcInsertSize_median();
   void PrintSamRecord(SamRecord &);
   void ReportWarningCount();
   void UpdateStats(SamRecord &, QSamFlag &filter, double, std::map<int, int> &, std::vector<std::string>& readGroups);
